@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin &middot; Life Stories</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --ink: #2b2420;
+    --ink-soft: #6f6258;
+    --burgundy: #6b2737;
+    --burgundy-deep: #531d2b;
+    --gold: #b08433;
+    --paper: #f6f0e6;
+    --paper-card: #fffdf8;
+    --rule: #ddd0bd;
+    --rule-soft: #ebe2d4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Newsreader", Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  h1 {
+    font-family: "Fraunces", serif; font-weight: 600; color: var(--burgundy);
+    font-size: 2rem; margin: 0 0 4px;
+  }
+  .eyebrow {
+    font-style: italic; color: var(--ink-soft); margin: 0 0 24px; font-size: 0.95rem;
+  }
+
+  .card {
+    background: var(--paper-card); border: 1px solid var(--rule); border-radius: 4px;
+    box-shadow: 0 18px 40px -30px rgba(74,55,40,0.2);
+    padding: 32px 36px; margin-bottom: 24px;
+  }
+  @media (max-width: 560px) { .card { padding: 24px 20px; } }
+
+  .field-label {
+    display: block; font-family: "Fraunces", serif; font-weight: 500;
+    font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 7px;
+  }
+  input[type="password"], input[type="text"] {
+    width: 100%; font-family: "Newsreader", serif; font-size: 1.05rem;
+    background: #fffefb; border: 1px solid var(--rule); border-radius: 3px;
+    padding: 11px 13px;
+  }
+  input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(176,132,51,0.18); }
+
+  .btn {
+    font-family: "Fraunces", serif; font-weight: 500; font-size: 0.98rem;
+    border: 1px solid transparent; border-radius: 3px; padding: 11px 22px;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-primary { background: var(--burgundy); color: #fff7ee; }
+  .btn-primary:hover { background: var(--burgundy-deep); }
+  .btn-ghost { background: transparent; color: var(--burgundy); border-color: var(--rule); }
+  .btn-ghost:hover { border-color: var(--burgundy); }
+  .btn-sm { padding: 7px 14px; font-size: 0.86rem; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
+  .toolbar .spacer { flex: 1; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule-soft); }
+  th { font-family: "Fraunces", serif; font-weight: 500; color: var(--ink-soft);
+       font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: #f3ead9; }
+  .pill {
+    display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 0.78rem;
+    background: var(--rule-soft); color: var(--ink-soft); padding: 2px 9px; border-radius: 99px;
+  }
+
+  .muted { color: var(--ink-soft); }
+  .center { text-align: center; }
+  .hidden { display: none !important; }
+  .mt-m { margin-top: 22px; }
+
+  /* Response detail */
+  .resp-section { margin-bottom: 26px; }
+  .resp-section h3 {
+    font-family: "Fraunces", serif; font-weight: 600; color: var(--burgundy);
+    font-size: 1.25rem; margin: 0 0 4px; border-bottom: 1px solid var(--rule-soft);
+    padding-bottom: 6px;
+  }
+  .qa { margin: 14px 0; }
+  .qa .q { font-family: "Fraunces", serif; font-weight: 500; color: var(--ink); }
+  .qa .a { color: var(--ink); white-space: pre-wrap; margin-top: 2px; }
+  .qa .a.empty { color: #b3a695; font-style: italic; }
+
+  .completion {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; color: var(--ink-soft);
+  }
+
+  details.help { margin-top: 8px; }
+  details.help summary { cursor: pointer; color: var(--burgundy); font-size: 0.9rem; }
+  details.help p { font-size: 0.92rem; color: var(--ink-soft); }
+
+  .note {
+    background: #f3ead9; border-left: 3px solid var(--gold); padding: 12px 16px;
+    font-size: 0.92rem; color: var(--ink-soft); border-radius: 0 3px 3px 0; margin-bottom: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <section id="admin-login" class="card" style="max-width:440px;margin:60px auto;">
+    <h1>Keeper&rsquo;s Desk</h1>
+    <p class="eyebrow">Where the stories are gathered.</p>
+    <div>
+      <label class="field-label" for="pass">Passphrase</label>
+      <input type="password" id="pass" />
+    </div>
+    <div class="mt-m">
+      <button class="btn btn-primary" id="btn-login" style="width:100%;">Enter</button>
+    </div>
+    <details class="help">
+      <summary>What is this?</summary>
+      <p>This is the private side of your questionnaire. The passphrase is whatever you set
+      in <code>config.js</code>. It keeps casual visitors out, though for true privacy you
+      should also rely on the database rules described in the setup guide.</p>
+    </details>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="admin-dash" class="hidden">
+    <h1>Keeper&rsquo;s Desk</h1>
+    <p class="eyebrow">Every story collected so far.</p>
+
+    <div class="note">
+      Tip: Use <strong>Manuscript</strong> to download a book-ready document for one person —
+      it lays out their answers as flowing chapters with clearly marked spots to drop in photos.
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh</button>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm" id="btn-export-csv">Export all (CSV)</button>
+        <button class="btn btn-ghost btn-sm" id="btn-export-json">Export all (JSON)</button>
+      </div>
+      <div id="table-mount"><p class="muted center">Loading&hellip;</p></div>
+    </div>
+  </section>
+
+  <!-- DETAIL -->
+  <section id="admin-detail" class="hidden">
+    <div class="toolbar">
+      <button class="btn btn-ghost btn-sm" id="btn-back-list">&larr; All responses</button>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-manuscript">Download manuscript (.html)</button>
+      <button class="btn btn-ghost btn-sm" id="btn-detail-json">Download (JSON)</button>
+    </div>
+    <div class="card" id="detail-mount"></div>
+  </section>
+
+</div>
+
+<script src="config.js"></script>
+<script src="questions.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+
+  if (typeof SECTIONS === "undefined" || typeof SUPABASE_URL === "undefined") {
+    document.addEventListener("DOMContentLoaded", function () {
+      document.body.innerHTML =
+        '<div style="max-width:620px;margin:80px auto;padding:32px 36px;' +
+        'font-family:Georgia,serif;color:#2b2420;background:#fffdf8;' +
+        'border:1px solid #ddd0bd;border-radius:6px;line-height:1.6;">' +
+        '<h2 style="color:#6b2737;margin-top:0;">Almost there</h2>' +
+        '<p>This page couldn\u2019t find <code>questions.js</code> and ' +
+        '<code>config.js</code>. Keep all the files in one folder, or run ' +
+        '<code>python3 -m http.server 8000</code> from that folder and open ' +
+        '<code>http://localhost:8000/admin.html</code>.</p></div>';
+    });
+    return;
+  }
+
+  let sb = null;
+  try {
+    if (SUPABASE_URL.indexOf("YOUR-PROJECT") === -1) {
+      sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+  } catch (e) {}
+
+  let rows = [];
+
+  function show(id) {
+    ["admin-login", "admin-dash", "admin-detail"].forEach((s) =>
+      $(s).classList.toggle("hidden", s !== id));
+  }
+
+  // Build a fast lookup of question text by id, plus section grouping
+  const QMAP = {};
+  SECTIONS.forEach((s) => s.questions.forEach((q) => { QMAP[q.id] = q.text; }));
+
+  function completion(answers) {
+    let total = 0, filled = 0;
+    SECTIONS.forEach((s) => {
+      if (s.custom) return; // custom section has no fixed questions
+      s.questions.forEach((q) => {
+        total++;
+        if (answers && answers[q.id] && String(answers[q.id]).trim()) filled++;
+      });
+    });
+    return { filled, total, pct: total ? Math.round((filled / total) * 100) : 0 };
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "\u2014";
+    try { return new Date(iso).toLocaleDateString(undefined,
+      { year: "numeric", month: "short", day: "numeric" }); }
+    catch (e) { return iso; }
+  }
+
+  // ── Login ────────────────────────────────────────────
+  function login() {
+    const val = $("pass").value;
+    if (val && val === ADMIN_PASSPHRASE) {
+      sessionStorage.setItem("ls-admin", "1");
+      show("admin-dash");
+      loadRows();
+    } else {
+      $("pass").value = "";
+      $("pass").placeholder = "Try again";
+    }
+  }
+
+  // ── Load all ─────────────────────────────────────────
+  async function loadRows() {
+    const mount = $("table-mount");
+    if (!sb) {
+      mount.innerHTML = '<p class="muted center">Supabase isn\u2019t configured yet. ' +
+        'Fill in <code>config.js</code> to see responses here.</p>';
+      return;
+    }
+    mount.innerHTML = '<p class="muted center">Loading&hellip;</p>';
+    const { data, error } = await sb
+      .from("responses")
+      .select("*")
+      .order("updated_at", { ascending: false });
+    if (error) {
+      mount.innerHTML = '<p class="muted center">Could not load: ' + error.message + '</p>';
+      return;
+    }
+    rows = data || [];
+    renderTable();
+  }
+
+  function renderTable() {
+    const mount = $("table-mount");
+    if (!rows.length) {
+      mount.innerHTML = '<p class="muted center">No responses yet.</p>';
+      return;
+    }
+    const t = document.createElement("table");
+    t.innerHTML = "<thead><tr>" +
+      "<th>Name</th><th>Date of birth</th><th>Progress</th><th>Last saved</th>" +
+      "</tr></thead>";
+    const tb = document.createElement("tbody");
+    rows.forEach((r, i) => {
+      const c = completion(r.answers);
+      const tr = document.createElement("tr");
+      tr.className = "clickable";
+      tr.innerHTML =
+        "<td>" + esc(r.first_name) + " " + esc(r.last_name) + "</td>" +
+        "<td>" + esc(r.dob || "") + "</td>" +
+        "<td><span class='pill'>" + c.filled + "/" + c.total + " &middot; " + c.pct + "%</span></td>" +
+        "<td class='completion'>" + fmtDate(r.updated_at) + "</td>";
+      tr.addEventListener("click", () => openDetail(i));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    mount.innerHTML = "";
+    mount.appendChild(t);
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // ── Detail view ──────────────────────────────────────
+  let currentRow = null;
+  function photoStrip(list) {
+    if (!list || !list.length) return "";
+    let h = "<div style='display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;'>";
+    list.forEach((p) => {
+      h += "<figure style='margin:0;'>" +
+        "<a href='" + esc(p.url) + "' target='_blank'>" +
+        "<img src='" + esc(p.url) + "' style='width:90px;height:90px;object-fit:cover;border:1px solid #ddd0bd;border-radius:3px;display:block;'></a>";
+      if (p.caption && p.caption.trim())
+        h += "<figcaption style='font-style:italic;color:#6f6258;font-size:0.78rem;max-width:90px;'>" +
+          esc(p.caption) + "</figcaption>";
+      h += "</figure>";
+    });
+    h += "</div>";
+    return h;
+  }
+  function openDetail(i) {
+    currentRow = rows[i];
+    const a = currentRow.answers || {};
+    const photos = currentRow.photos || {};
+    const customs = currentRow.custom_entries || [];
+    const mount = $("detail-mount");
+    const cover = currentRow.cover_photo && currentRow.cover_photo.url
+      ? "<img src='" + esc(currentRow.cover_photo.url) +
+        "' style='width:120px;height:150px;object-fit:cover;border:1px solid #ddd0bd;border-radius:4px;float:right;margin:0 0 12px 16px;'>"
+      : "";
+    let html = cover + "<h1 style='margin-bottom:2px;'>" +
+      esc(currentRow.first_name) + " " + esc(currentRow.last_name) + "</h1>" +
+      "<p class='eyebrow'>Born " + esc(currentRow.dob || "\u2014") +
+      " &middot; last saved " + fmtDate(currentRow.updated_at) + "</p>";
+
+    SECTIONS.forEach((s) => {
+      if (s.custom) {
+        if (!customs.length) return;
+        html += "<div class='resp-section'><h3>" + esc(s.title) + "</h3>";
+        customs.forEach((e) => {
+          html += "<div class='qa'><div class='q'>" +
+            esc(e.q || "(untitled)") + "</div>";
+          html += "<div class='a'>" + (e.a ? esc(e.a) : "<span class='empty'>(no answer)</span>") + "</div>";
+          html += photoStrip(e.photos);
+          html += "</div>";
+        });
+        html += "</div>";
+        return;
+      }
+      html += "<div class='resp-section'><h3>" + esc(s.title) + "</h3>";
+      s.questions.forEach((q) => {
+        const val = a[q.id];
+        html += "<div class='qa'><div class='q'>" + esc(q.text) + "</div>";
+        if (val && String(val).trim()) {
+          html += "<div class='a'>" + esc(val) + "</div>";
+        } else {
+          html += "<div class='a empty'>(not yet answered)</div>";
+        }
+        html += photoStrip(photos[q.id]);
+        html += "</div>";
+      });
+      html += "</div>";
+    });
+    mount.innerHTML = html;
+    show("admin-detail");
+    window.scrollTo({ top: 0 });
+  }
+
+  // ── Exports ──────────────────────────────────────────
+  function download(filename, text, mime) {
+    const blob = new Blob([text], { type: mime || "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function csvCell(s) {
+    s = String(s == null ? "" : s);
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function exportCSV() {
+    // One row per respondent; one column per fixed question, plus identity
+    // columns and a final column holding any custom "in your own words" entries.
+    const qids = [];
+    SECTIONS.forEach((s) => {
+      if (s.custom) return;
+      s.questions.forEach((q) => qids.push(q.id));
+    });
+    const header = ["First name", "Last name", "Date of birth", "Last saved"]
+      .concat(SECTIONS.filter((s) => !s.custom)
+        .flatMap((s) => s.questions.map((q) => s.title + " \u2014 " + q.text)))
+      .concat(["In Their Own Words (custom entries)"]);
+    const lines = [header.map(csvCell).join(",")];
+    rows.forEach((r) => {
+      const a = r.answers || {};
+      const base = [r.first_name, r.last_name, r.dob, r.updated_at];
+      const ans = qids.map((id) => a[id] || "");
+      const customs = (r.custom_entries || [])
+        .filter((e) => (e.q && e.q.trim()) || (e.a && e.a.trim()))
+        .map((e) => (e.q || "(untitled)") + ": " + (e.a || ""))
+        .join("\n\n");
+      lines.push(base.concat(ans).concat([customs]).map(csvCell).join(","));
+    });
+    download("life-stories.csv", lines.join("\n"), "text/csv;charset=utf-8");
+  }
+
+  function exportJSON() {
+    download("life-stories.json", JSON.stringify(rows, null, 2),
+      "application/json;charset=utf-8");
+  }
+
+  function exportDetailJSON() {
+    if (!currentRow) return;
+    download(
+      (currentRow.last_name || "story") + "-" + (currentRow.first_name || "") + ".json",
+      JSON.stringify(currentRow, null, 2), "application/json;charset=utf-8");
+  }
+
+  // ── Book-ready manuscript (one person) ───────────────
+  // Produces a clean, print-friendly HTML document with each section as a
+  // chapter, the questions as gentle subheadings, and a clearly marked
+  // [ PHOTO ] block after each chapter for the layout stage.
+  function exportManuscript() {
+    if (!currentRow) return;
+    const r = currentRow;
+    const a = r.answers || {};
+    const photos = r.photos || {};
+    const customs = r.custom_entries || [];
+    const cover = r.cover_photo || null;
+    const name = (r.first_name + " " + r.last_name).trim();
+
+    function imgs(list) {
+      let h = '<div class="photos">';
+      list.forEach((p) => {
+        h += '<figure><img src="' + esc(p.url) + '" alt="">';
+        if (p.caption && p.caption.trim())
+          h += '<figcaption>' + esc(p.caption) + '</figcaption>';
+        h += '</figure>';
+      });
+      h += '</div>';
+      return h;
+    }
+
+    function photoBlock(list, label) {
+      if (list && list.length) return imgs(list);
+      // No photo supplied — leave a marked slot for the layout stage.
+      return '<div class="photo-slot">[ PHOTO &mdash; ' + esc(label) +
+             ': caption here ]</div>';
+    }
+
+    let body = "";
+    SECTIONS.forEach((s, si) => {
+      if (s.custom) {
+        const entries = customs.filter((e) => (e.q && e.q.trim()) || (e.a && e.a.trim()));
+        if (!entries.length) return;
+        body += '<section class="chapter">';
+        body += '<p class="chapter-num">Chapter ' + (si + 1) + '</p>';
+        body += '<h2>' + esc(s.title) + '</h2>';
+        body += '<p class="chapter-sub">' + esc(s.subtitle) + '</p>';
+        entries.forEach((e) => {
+          body += '<div class="entry">';
+          if (e.q && e.q.trim()) body += '<h3>' + esc(e.q) + '</h3>';
+          if (e.a && e.a.trim())
+            body += '<p>' + esc(e.a).replace(/\n/g, '</p><p>') + '</p>';
+          if (e.photos && e.photos.length) body += imgs(e.photos);
+          body += '</div>';
+        });
+        body += '</section>';
+        return;
+      }
+
+      const answered = s.questions.filter((q) => a[q.id] && String(a[q.id]).trim());
+      const anyPhotos = s.questions.some((q) => photos[q.id] && photos[q.id].length);
+      if (!answered.length && !anyPhotos) return;
+
+      body += '<section class="chapter">';
+      body += '<p class="chapter-num">Chapter ' + (si + 1) + '</p>';
+      body += '<h2>' + esc(s.title) + '</h2>';
+      body += '<p class="chapter-sub">' + esc(s.subtitle) + '</p>';
+
+      s.questions.forEach((q) => {
+        const val = a[q.id];
+        const qphotos = photos[q.id];
+        if ((!val || !String(val).trim()) && (!qphotos || !qphotos.length)) return;
+        body += '<div class="entry">';
+        body += '<h3>' + esc(q.text) + '</h3>';
+        if (val && String(val).trim())
+          body += '<p>' + esc(val).replace(/\n/g, '</p><p>') + '</p>';
+        if (qphotos && qphotos.length) body += imgs(qphotos);
+        body += '</div>';
+      });
+
+      // One marked slot per chapter for an extra layout photo.
+      body += photoBlock(null, s.title);
+      body += '</section>';
+    });
+
+    const doc =
+'<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(name) +
+' \u2014 A Life Story</title>' +
+'<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap" rel="stylesheet">' +
+'<style>' +
+'@page{size:6in 9in;margin:0.85in 0.75in;}' +
+'body{font-family:"Newsreader",Georgia,serif;color:#2b2420;font-size:12pt;line-height:1.6;max-width:42rem;margin:0 auto;padding:48px 32px;}' +
+'.title-page{text-align:center;padding:30vh 0 40vh;page-break-after:always;}' +
+'.title-page h1{font-family:"Fraunces",serif;font-weight:600;color:#6b2737;font-size:2.6rem;margin:0 0 12px;}' +
+'.title-page p{font-style:italic;color:#6f6258;font-size:1.1rem;}' +
+'.chapter{page-break-before:always;margin-bottom:40px;}' +
+'.chapter-num{font-family:"Fraunces",serif;font-style:italic;color:#b08433;font-size:0.9rem;margin:0 0 2px;letter-spacing:0.04em;}' +
+'.chapter h2{font-family:"Fraunces",serif;font-weight:600;color:#6b2737;font-size:1.8rem;margin:0 0 6px;}' +
+'.chapter-sub{font-style:italic;color:#6f6258;margin:0 0 22px;border-bottom:1px solid #ddd0bd;padding-bottom:14px;}' +
+'.entry{margin:0 0 22px;}' +
+'.entry h3{font-family:"Fraunces",serif;font-weight:500;color:#6b2737;font-size:1.05rem;margin:0 0 4px;}' +
+'.entry p{margin:0 0 8px;text-align:justify;}' +
+'.photos{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;}' +
+'.photos figure{margin:0;max-width:46%;}' +
+'.photos img{width:100%;border:1px solid #ddd0bd;border-radius:3px;display:block;}' +
+'.photos figcaption{font-style:italic;color:#6f6258;font-size:0.82rem;text-align:center;margin-top:4px;}' +
+'.cover-img{display:block;margin:0 auto 24px;max-width:60%;max-height:40vh;border:1px solid #ddd0bd;border-radius:4px;object-fit:cover;}' +
+'.photo-slot{margin:28px 0;padding:48px 16px;text-align:center;border:1.5px dashed #c9b89e;color:#a8967c;font-family:"Fraunces",serif;font-style:italic;border-radius:4px;background:#faf5ec;}' +
+'@media print{.photo-slot{border-color:#ccc;color:#999;}}' +
+'</style></head><body>' +
+'<div class="title-page">' +
+(cover && cover.url ? '<img class="cover-img" src="' + esc(cover.url) + '" alt="">' : '') +
+'<h1>' + esc(name) + '</h1>' +
+'<p>A Life in His or Her Own Words</p>' +
+'<p style="margin-top:8px;">Born ' + esc(r.dob || '') + '</p></div>' +
+body +
+'</body></html>';
+
+    download(
+      (r.last_name || "story") + "-" + (r.first_name || "") + "-manuscript.html",
+      doc, "text/html;charset=utf-8");
+  }
+
+  // ── Wire up ──────────────────────────────────────────
+  $("btn-login").addEventListener("click", login);
+  $("pass").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+  $("btn-refresh").addEventListener("click", loadRows);
+  $("btn-export-csv").addEventListener("click", exportCSV);
+  $("btn-export-json").addEventListener("click", exportJSON);
+  $("btn-back-list").addEventListener("click", () => { show("admin-dash"); });
+  $("btn-detail-json").addEventListener("click", exportDetailJSON);
+  $("btn-manuscript").addEventListener("click", exportManuscript);
+
+  // Stay logged in for the session
+  if (sessionStorage.getItem("ls-admin") === "1") {
+    show("admin-dash");
+    loadRows();
+  } else {
+    show("admin-login");
+  }
+})();
+</script>
+</body>
+</html>

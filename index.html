@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A Life in Your Own Words</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --ink: #2b2420;
+    --ink-soft: #6f6258;
+    --burgundy: #6b2737;
+    --burgundy-deep: #531d2b;
+    --gold: #b08433;
+    --paper: #f6f0e6;
+    --paper-card: #fffdf8;
+    --rule: #ddd0bd;
+    --rule-soft: #ebe2d4;
+    --shadow: rgba(74, 55, 40, 0.12);
+    --focus: #8a5a2b;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    font-family: "Newsreader", Georgia, serif;
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(176,132,51,0.05), transparent 42%),
+      radial-gradient(circle at 88% 82%, rgba(107,39,55,0.05), transparent 45%);
+    color: var(--ink);
+    font-size: 19px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  /* ── Masthead ───────────────────────────────────────── */
+  header.masthead {
+    text-align: center;
+    padding: 24px 0 20px;
+  }
+  .masthead .eyebrow {
+    font-family: "Newsreader", serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+    margin: 0 0 6px;
+  }
+  .masthead h1 {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    color: var(--burgundy);
+    font-size: 2.3rem;
+    line-height: 1.1;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .rule-ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 18px auto 0;
+    color: var(--gold);
+  }
+  .rule-ornament::before,
+  .rule-ornament::after {
+    content: "";
+    height: 1px;
+    width: 70px;
+    background: var(--gold);
+    opacity: 0.6;
+  }
+  .rule-ornament span { font-size: 0.8rem; }
+
+  /* ── Card ───────────────────────────────────────────── */
+  .card {
+    background: var(--paper-card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: 0 1px 0 var(--rule-soft), 0 18px 40px -28px var(--shadow);
+    padding: 40px 44px;
+    margin-top: 28px;
+  }
+  @media (max-width: 560px) {
+    .card { padding: 28px 22px; }
+    .masthead h1 { font-size: 1.85rem; }
+    body { font-size: 18px; }
+  }
+
+  /* ── Type inside flow ───────────────────────────────── */
+  .lead {
+    font-size: 1.05rem;
+    color: var(--ink);
+  }
+  .lead p { margin: 0 0 1.1em; }
+  .muted { color: var(--ink-soft); }
+
+  .field-label {
+    display: block;
+    font-family: "Fraunces", serif;
+    font-weight: 500;
+    font-size: 0.92rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 7px;
+  }
+
+  input[type="text"],
+  input[type="date"],
+  input[type="password"],
+  textarea {
+    width: 100%;
+    font-family: "Newsreader", serif;
+    font-size: 1.05rem;
+    color: var(--ink);
+    background: #fffefb;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 11px 13px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  textarea {
+    min-height: 130px;
+    resize: vertical;
+    line-height: 1.6;
+  }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px rgba(138,90,43,0.15);
+  }
+
+  .field { margin-bottom: 22px; }
+
+  /* ── Buttons ────────────────────────────────────────── */
+  .btn {
+    font-family: "Fraunces", serif;
+    font-weight: 500;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 12px 26px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.05s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: var(--burgundy);
+    color: #fff7ee;
+  }
+  .btn-primary:hover { background: var(--burgundy-deep); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--burgundy);
+    border-color: var(--rule);
+  }
+  .btn-ghost:hover { border-color: var(--burgundy); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin-top: 32px;
+  }
+  .btn-row .spacer { flex: 1; }
+
+  /* ── Progress ───────────────────────────────────────── */
+  .progress-wrap { margin: 30px 0 6px; }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    font-style: italic;
+    margin-bottom: 7px;
+  }
+  .progress-track {
+    height: 5px;
+    background: var(--rule-soft);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--burgundy));
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── Section heading inside wizard ──────────────────── */
+  .section-num {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    color: var(--gold);
+    font-size: 0.95rem;
+    margin: 0 0 4px;
+  }
+  .section-title {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    color: var(--burgundy);
+    font-size: 1.7rem;
+    margin: 0 0 8px;
+    line-height: 1.15;
+  }
+  .section-sub {
+    font-style: italic;
+    color: var(--ink-soft);
+    margin: 0 0 6px;
+  }
+  .section-divider {
+    border: none;
+    border-top: 1px solid var(--rule-soft);
+    margin: 22px 0 26px;
+  }
+
+  .q-text {
+    font-family: "Fraunces", serif;
+    font-weight: 500;
+    font-size: 1.12rem;
+    color: var(--ink);
+    margin: 0 0 9px;
+    line-height: 1.4;
+  }
+  .q-block { margin-bottom: 30px; }
+
+  /* ── Save toast ─────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: #fdf6ea;
+    font-size: 0.9rem;
+    padding: 10px 18px;
+    border-radius: 4px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.4);
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--burgundy-deep); }
+
+  .save-note {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  .hidden { display: none !important; }
+
+  .identity-banner {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-top: 18px;
+  }
+  .identity-banner button {
+    background: none;
+    border: none;
+    color: var(--burgundy);
+    text-decoration: underline;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    padding: 0;
+  }
+
+  .toc {
+    list-style: none;
+    padding: 0;
+    margin: 18px 0 0;
+    columns: 2;
+    column-gap: 28px;
+  }
+  .toc li {
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    padding: 3px 0;
+    break-inside: avoid;
+  }
+  @media (max-width: 480px) { .toc { columns: 1; } }
+
+  .center { text-align: center; }
+  .mt-s { margin-top: 14px; }
+  .mt-m { margin-top: 24px; }
+
+  /* ── Photo upload per question ──────────────────────── */
+  .photo-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .photo-btn {
+    font-family: "Fraunces", serif;
+    font-size: 0.85rem;
+    color: var(--burgundy);
+    background: transparent;
+    border: 1px dashed var(--rule);
+    border-radius: 3px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .photo-btn:hover { border-color: var(--gold); background: #faf4ea; }
+  .photo-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .photo-thumb {
+    position: relative;
+    width: 64px; height: 64px;
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    background: #f0e7d8 center/cover no-repeat;
+  }
+  .photo-thumb .remove {
+    position: absolute; top: 2px; right: 2px;
+    width: 18px; height: 18px; line-height: 16px; text-align: center;
+    background: rgba(43,36,32,0.78); color: #fff; border: none;
+    border-radius: 50%; cursor: pointer; font-size: 12px; padding: 0;
+  }
+  .photo-thumb.uploading::after {
+    content: "\2026"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,253,248,0.7); color: var(--burgundy); font-weight: 600;
+  }
+  .photo-caption {
+    font-size: 0.85rem; color: var(--ink-soft); font-style: italic;
+  }
+
+  /* ── Custom entries (your own questions) ────────────── */
+  .custom-entry {
+    border: 1px solid var(--rule-soft);
+    border-radius: 4px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+    background: #fffdf8;
+    position: relative;
+  }
+  .custom-entry .entry-num {
+    font-family: "Fraunces", serif; font-style: italic; color: var(--gold);
+    font-size: 0.85rem; margin: 0 0 8px;
+  }
+  .custom-entry .remove-entry {
+    position: absolute; top: 12px; right: 14px;
+    background: none; border: none; color: var(--ink-soft);
+    cursor: pointer; font-size: 0.82rem; text-decoration: underline;
+    font-family: inherit;
+  }
+  .custom-entry .remove-entry:hover { color: var(--burgundy); }
+  .add-entry-btn {
+    width: 100%;
+    font-family: "Fraunces", serif; font-size: 0.95rem; color: var(--burgundy);
+    background: transparent; border: 1px dashed var(--rule);
+    border-radius: 4px; padding: 14px; cursor: pointer; margin-top: 4px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .add-entry-btn:hover { border-color: var(--gold); background: #faf4ea; }
+  .mini-label {
+    display: block; font-family: "Fraunces", serif; font-size: 0.8rem;
+    letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft);
+    margin: 10px 0 5px;
+  }
+
+  /* ── Print view ─────────────────────────────────────── */
+  #print-root { display: none; }
+
+  @media print {
+    body { background: #fff; }
+    .wrap > header.masthead,
+    #screen-login, #screen-wizard, #screen-done,
+    .toast { display: none !important; }
+    #print-root { display: block !important; }
+    .wrap { max-width: none; padding: 0; }
+  }
+
+  .print-cover { text-align: center; padding: 28vh 0 30vh; page-break-after: always; }
+  .print-cover h1 {
+    font-family: "Fraunces", serif; font-weight: 600; color: var(--burgundy);
+    font-size: 2.6rem; margin: 0 0 10px;
+  }
+  .print-cover p { font-style: italic; color: var(--ink-soft); font-size: 1.1rem; margin: 4px 0; }
+  .print-chapter { page-break-before: always; margin-bottom: 32px; }
+  .print-chapter .cnum {
+    font-family: "Fraunces", serif; font-style: italic; color: var(--gold);
+    font-size: 0.9rem; margin: 0 0 2px;
+  }
+  .print-chapter h2 {
+    font-family: "Fraunces", serif; font-weight: 600; color: var(--burgundy);
+    font-size: 1.7rem; margin: 0 0 6px;
+  }
+  .print-chapter .csub {
+    font-style: italic; color: var(--ink-soft); margin: 0 0 18px;
+    border-bottom: 1px solid var(--rule); padding-bottom: 12px;
+  }
+  .print-entry { margin: 0 0 20px; }
+  .print-entry h3 {
+    font-family: "Fraunces", serif; font-weight: 500; color: var(--burgundy);
+    font-size: 1.05rem; margin: 0 0 4px;
+  }
+  .print-entry p { margin: 0 0 8px; text-align: justify; }
+  .print-photos { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 4px; }
+  .print-fig { margin: 0; max-width: 46%; }
+  .print-fig img {
+    width: 100%; border: 1px solid var(--rule); border-radius: 3px; display: block;
+  }
+  .print-fig figcaption {
+    font-style: italic; color: var(--ink-soft); font-size: 0.82rem;
+    text-align: center; margin-top: 4px;
+  }
+  .print-cover .cover-img {
+    display: block; margin: 0 auto 26px; max-width: 62%; max-height: 42vh;
+    border: 1px solid var(--rule); border-radius: 4px; object-fit: cover;
+  }
+
+  /* ── Photo cells (thumb + caption + reorder) ────────── */
+  .photo-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .photo-cell { width: 96px; }
+  .photo-cell .photo-thumb { width: 96px; height: 96px; }
+  .photo-nav { display: flex; justify-content: space-between; margin: 3px 0 2px; }
+  .photo-nav button {
+    background: transparent; border: 1px solid var(--rule); border-radius: 3px;
+    color: var(--burgundy); cursor: pointer; font-size: 0.8rem;
+    width: 44px; padding: 1px 0;
+  }
+  .photo-nav button:disabled { opacity: 0.3; cursor: default; }
+  .photo-cap-input {
+    width: 96px; font-size: 0.78rem !important; padding: 4px 6px !important;
+    margin-top: 3px;
+  }
+
+  /* ── Cover photo widget ─────────────────────────────── */
+  .cover-widget { margin-top: 6px; }
+  .cover-label {
+    font-family: "Fraunces", serif; font-weight: 500; color: var(--burgundy);
+    font-size: 1.05rem; margin: 0 0 4px;
+  }
+  .cover-help { font-style: italic; color: var(--ink-soft); margin: 0 0 12px; font-size: 0.92rem; }
+  .cover-preview {
+    width: 150px; height: 180px; border-radius: 4px; border: 1px solid var(--rule);
+    background: #f0e7d8 center/cover no-repeat; margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">A keepsake for those who come after</p>
+    <h1>A Life in Your Own Words</h1>
+    <div class="rule-ornament"><span>&#10086;</span></div>
+  </header>
+
+  <!-- ── SCREEN: Sign in / start ──────────────────────── -->
+  <section id="screen-login" class="card">
+    <div class="lead">
+      <p>Welcome. This is a place to set down your life story — at your own pace, in your own words.</p>
+      <p class="muted">To begin, or to pick up where you left off, tell us who you are. Your name and date of birth are how we&rsquo;ll find your saved answers when you return.</p>
+    </div>
+    <hr class="section-divider" />
+    <div class="field">
+      <label class="field-label" for="first">First name</label>
+      <input type="text" id="first" autocomplete="given-name" />
+    </div>
+    <div class="field">
+      <label class="field-label" for="last">Last name</label>
+      <input type="text" id="last" autocomplete="family-name" />
+    </div>
+    <div class="field">
+      <label class="field-label" for="dob">Date of birth</label>
+      <input type="date" id="dob" />
+    </div>
+    <div class="btn-row">
+      <span class="save-note">Your progress saves automatically as you go.</span>
+      <button class="btn btn-primary" id="btn-start">Begin &rarr;</button>
+    </div>
+    <ul class="toc" id="toc"></ul>
+  </section>
+
+  <!-- ── SCREEN: Wizard ───────────────────────────────── -->
+  <section id="screen-wizard" class="card hidden">
+    <div id="section-mount"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="btn-back">&larr; Back</button>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" id="btn-save">Save</button>
+      <button class="btn btn-primary" id="btn-next">Next &rarr;</button>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <span id="progress-label"></span>
+        <span id="progress-pct"></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="identity-banner">
+      Saving as <strong id="who"></strong> &middot;
+      <button id="btn-switch">not you?</button>
+      &middot;
+      <button id="btn-print-wizard">print my answers</button>
+    </div>
+  </section>
+
+  <!-- ── SCREEN: Done ─────────────────────────────────── -->
+  <section id="screen-done" class="card hidden center">
+    <h2 class="section-title" style="margin-bottom:14px;">Thank you.</h2>
+    <div class="lead">
+      <p>Your story has been saved. What you&rsquo;ve written here is a gift — one your family will hold onto for a very long time.</p>
+      <p class="muted">You can return any time with your name and date of birth to add more or revise what you&rsquo;ve written.</p>
+    </div>
+    <div class="mt-m">
+      <button class="btn btn-ghost" id="btn-review">Review my answers</button>
+      <button class="btn btn-primary" id="btn-print-done">Print or save my book</button>
+    </div>
+  </section>
+</div>
+
+<!-- Hidden print layout, populated on demand -->
+<div id="print-root"></div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="questions.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ── Guard: did the helper scripts load? ──────────────
+  // When the page is opened by double-clicking (file://) from a folder where
+  // questions.js / config.js aren't alongside it, those globals go undefined.
+  if (typeof SECTIONS === "undefined" || typeof SUPABASE_URL === "undefined") {
+    document.addEventListener("DOMContentLoaded", function () {
+      document.body.innerHTML =
+        '<div style="max-width:620px;margin:80px auto;padding:32px 36px;' +
+        'font-family:Georgia,serif;color:#2b2420;background:#fffdf8;' +
+        'border:1px solid #ddd0bd;border-radius:6px;line-height:1.6;">' +
+        '<h2 style="color:#6b2737;margin-top:0;">Almost there</h2>' +
+        '<p>The page couldn\u2019t find its companion files ' +
+        '(<code>questions.js</code> and <code>config.js</code>).</p>' +
+        '<p>This usually happens when the file is opened by double-clicking it. ' +
+        'Two easy fixes:</p>' +
+        '<ol><li>Make sure <code>index.html</code>, <code>admin.html</code>, ' +
+        '<code>questions.js</code> and <code>config.js</code> are all in the ' +
+        '<em>same folder</em>, then try again; or</li>' +
+        '<li>Run a tiny local server from that folder \u2014 in a terminal type ' +
+        '<code>python3 -m http.server 8000</code> and open ' +
+        '<code>http://localhost:8000</code>.</li></ol>' +
+        '<p style="color:#6f6258;">Once it\u2019s hosted on Vercel or GitHub Pages, ' +
+        'this never comes up.</p></div>';
+    });
+    return;
+  }
+
+  // ── Supabase client ──────────────────────────────────
+  let sb = null;
+  let offlineMode = false;
+  try {
+    if (SUPABASE_URL.indexOf("YOUR-PROJECT") === -1) {
+      sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+      offlineMode = true; // config not filled in yet — fall back to local only
+    }
+  } catch (e) {
+    offlineMode = true;
+  }
+
+  // ── State ────────────────────────────────────────────
+  const state = {
+    respondentKey: null,   // normalized id
+    first: "", last: "", dob: "",
+    answers: {},           // { questionId: value }
+    photos: {},            // { questionId: [ {url, path, caption} ] }
+    customEntries: [],      // [ {q, a, photos:[...]} ]
+    coverPhoto: null,       // { url, path } or null  (optional)
+    sectionIndex: 0,
+  };
+
+  const totalSections = SECTIONS.length;
+  const CUSTOM_SECTION = SECTIONS.find((s) => s.custom);
+
+  // ── Helpers ──────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+
+  function normKey(first, last, dob) {
+    return (first.trim().toLowerCase() + "|" +
+            last.trim().toLowerCase() + "|" +
+            dob.trim()).replace(/\s+/g, " ");
+  }
+
+  function localKey() { return "lifestory:" + state.respondentKey; }
+
+  function saveLocal() {
+    try {
+      localStorage.setItem(localKey(), JSON.stringify({
+        first: state.first, last: state.last, dob: state.dob,
+        answers: state.answers, photos: state.photos,
+        customEntries: state.customEntries, coverPhoto: state.coverPhoto,
+        sectionIndex: state.sectionIndex,
+      }));
+    } catch (e) {}
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem(localKey());
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  let toastTimer = null;
+  function toast(msg, isError) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.toggle("error", !!isError);
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  // ── Persistence to Supabase ──────────────────────────
+  async function remoteSave(showToast) {
+    saveLocal();
+    if (!sb) {
+      if (showToast) toast("Saved on this device");
+      return;
+    }
+    const row = {
+      respondent_key: state.respondentKey,
+      first_name: state.first,
+      last_name: state.last,
+      dob: state.dob,
+      answers: state.answers,
+      photos: state.photos,
+      custom_entries: state.customEntries,
+      cover_photo: state.coverPhoto,
+      section_index: state.sectionIndex,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await sb
+      .from("responses")
+      .upsert(row, { onConflict: "respondent_key" });
+    if (error) {
+      console.error(error);
+      if (showToast) toast("Saved on this device (sync issue)", true);
+    } else if (showToast) {
+      toast("Progress saved");
+    }
+  }
+
+  async function remoteLoad() {
+    if (!sb) return loadLocal();
+    const { data, error } = await sb
+      .from("responses")
+      .select("answers, photos, custom_entries, cover_photo, section_index, first_name, last_name, dob")
+      .eq("respondent_key", state.respondentKey)
+      .maybeSingle();
+    if (error) { console.error(error); return loadLocal(); }
+    if (data) {
+      return {
+        answers: data.answers || {},
+        photos: data.photos || {},
+        customEntries: data.custom_entries || [],
+        coverPhoto: data.cover_photo || null,
+        sectionIndex: data.section_index || 0,
+        first: data.first_name, last: data.last_name, dob: data.dob,
+      };
+    }
+    return loadLocal();
+  }
+
+  // ── Photo upload to Supabase Storage ─────────────────
+  async function uploadPhoto(file) {
+    if (!sb) {
+      // Offline fallback: embed as data URL so it still shows locally.
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ url: reader.result, path: null });
+        reader.readAsDataURL(file);
+      });
+    }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const safe = state.respondentKey.replace(/[^a-z0-9]+/g, "_");
+    const path = safe + "/" + Date.now() + "_" +
+                 Math.random().toString(36).slice(2, 8) + "." + ext;
+    const { error } = await sb.storage.from("photos").upload(path, file, {
+      cacheControl: "3600", upsert: false,
+    });
+    if (error) { console.error(error); throw error; }
+    const { data } = sb.storage.from("photos").getPublicUrl(path);
+    return { url: data.publicUrl, path: path };
+  }
+
+  // ── Photo widget builder ─────────────────────────────
+  // `getPhotos` returns the current array; `setPhotos` stores it back.
+  // Each photo is { url, path, caption }. Supports captions and reordering.
+  function buildPhotoWidget(getPhotos, setPhotos, captionText) {
+    const row = document.createElement("div");
+    row.className = "photo-row";
+
+    const thumbs = document.createElement("div");
+    thumbs.className = "photo-thumbs";
+
+    function commit(arr) { setPhotos(arr); scheduleAutosave(); }
+
+    function renderThumbs() {
+      thumbs.innerHTML = "";
+      const list = getPhotos() || [];
+      list.forEach((p, idx) => {
+        const cell = document.createElement("div");
+        cell.className = "photo-cell";
+
+        const t = document.createElement("div");
+        t.className = "photo-thumb";
+        t.style.backgroundImage = "url('" + p.url + "')";
+
+        const rm = document.createElement("button");
+        rm.className = "remove";
+        rm.type = "button";
+        rm.textContent = "\u00d7";
+        rm.title = "Remove photo";
+        rm.addEventListener("click", () => {
+          const arr = (getPhotos() || []).slice();
+          arr.splice(idx, 1);
+          commit(arr);
+          renderThumbs();
+        });
+        t.appendChild(rm);
+        cell.appendChild(t);
+
+        // Reorder arrows (only shown when there's more than one)
+        if (list.length > 1) {
+          const nav = document.createElement("div");
+          nav.className = "photo-nav";
+          const left = document.createElement("button");
+          left.type = "button"; left.textContent = "\u2190";
+          left.title = "Move earlier";
+          left.disabled = idx === 0;
+          left.addEventListener("click", () => {
+            const arr = (getPhotos() || []).slice();
+            [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+            commit(arr); renderThumbs();
+          });
+          const right = document.createElement("button");
+          right.type = "button"; right.textContent = "\u2192";
+          right.title = "Move later";
+          right.disabled = idx === list.length - 1;
+          right.addEventListener("click", () => {
+            const arr = (getPhotos() || []).slice();
+            [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
+            commit(arr); renderThumbs();
+          });
+          nav.appendChild(left); nav.appendChild(right);
+          cell.appendChild(nav);
+        }
+
+        // Caption field
+        const cap = document.createElement("input");
+        cap.type = "text";
+        cap.className = "photo-cap-input";
+        cap.placeholder = "Caption (optional)";
+        cap.value = p.caption || "";
+        cap.addEventListener("input", (e) => {
+          const arr = (getPhotos() || []).slice();
+          arr[idx] = Object.assign({}, arr[idx], { caption: e.target.value });
+          setPhotos(arr);
+          scheduleAutosave();
+        });
+        cell.appendChild(cap);
+
+        thumbs.appendChild(cell);
+      });
+    }
+
+    const btn = document.createElement("button");
+    btn.className = "photo-btn";
+    btn.type = "button";
+    btn.textContent = "\uff0b Add a photo";
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.multiple = true;
+    fileInput.style.display = "none";
+
+    btn.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", async (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        const ph = document.createElement("div");
+        ph.className = "photo-thumb uploading";
+        thumbs.appendChild(ph);
+        try {
+          const result = await uploadPhoto(file);
+          result.caption = "";
+          const arr = (getPhotos() || []).slice();
+          arr.push(result);
+          setPhotos(arr);
+        } catch (err) {
+          toast("That photo couldn't be uploaded", true);
+        }
+        ph.remove();
+        renderThumbs();
+      }
+      fileInput.value = "";
+      remoteSave(false);
+    });
+
+    renderThumbs();
+
+    const head = document.createElement("div");
+    head.className = "photo-head";
+    head.appendChild(btn);
+    if (captionText) {
+      const cap = document.createElement("span");
+      cap.className = "photo-caption";
+      cap.textContent = captionText;
+      head.appendChild(cap);
+    }
+
+    row.appendChild(head);
+    row.appendChild(thumbs);
+    row.appendChild(fileInput);
+    return row;
+  }
+
+  // ── Cover photo widget (single, optional) ────────────
+  function buildCoverWidget() {
+    const wrap = document.createElement("div");
+    wrap.className = "cover-widget";
+
+    function render() {
+      wrap.innerHTML = "";
+
+      const label = document.createElement("p");
+      label.className = "cover-label";
+      label.textContent = "Cover photo \u2014 optional";
+      wrap.appendChild(label);
+
+      const help = document.createElement("p");
+      help.className = "cover-help";
+      help.textContent = "If you\u2019d like, choose a favorite portrait for the " +
+        "front of your book. You can skip this and everything still works.";
+      wrap.appendChild(help);
+
+      if (state.coverPhoto && state.coverPhoto.url) {
+        const preview = document.createElement("div");
+        preview.className = "cover-preview";
+        preview.style.backgroundImage = "url('" + state.coverPhoto.url + "')";
+        wrap.appendChild(preview);
+
+        const remove = document.createElement("button");
+        remove.className = "photo-btn";
+        remove.type = "button";
+        remove.textContent = "Remove cover photo";
+        remove.addEventListener("click", () => {
+          state.coverPhoto = null;
+          render();
+          remoteSave(false);
+        });
+        wrap.appendChild(remove);
+      } else {
+        const btn = document.createElement("button");
+        btn.className = "photo-btn";
+        btn.type = "button";
+        btn.textContent = "\uff0b Choose a cover photo";
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "image/*";
+        fileInput.style.display = "none";
+        btn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", async (e) => {
+          const file = (e.target.files || [])[0];
+          if (!file) return;
+          btn.textContent = "Uploading\u2026";
+          try {
+            state.coverPhoto = await uploadPhoto(file);
+          } catch (err) {
+            toast("That photo couldn't be uploaded", true);
+          }
+          render();
+          remoteSave(false);
+        });
+        wrap.appendChild(btn);
+        wrap.appendChild(fileInput);
+      }
+    }
+
+    render();
+    return wrap;
+  }
+
+  // ── Rendering ────────────────────────────────────────
+  function renderTOC() {
+    const ul = $("toc");
+    ul.innerHTML = "";
+    SECTIONS.forEach((s, i) => {
+      const li = document.createElement("li");
+      li.textContent = (i + 1) + ".  " + s.title;
+      ul.appendChild(li);
+    });
+  }
+
+  function renderSection() {
+    const sec = SECTIONS[state.sectionIndex];
+    const mount = $("section-mount");
+    mount.innerHTML = "";
+
+    const num = document.createElement("p");
+    num.className = "section-num";
+    num.textContent = "Part " + (state.sectionIndex + 1) + " of " + totalSections;
+    mount.appendChild(num);
+
+    const h = document.createElement("h2");
+    h.className = "section-title";
+    h.textContent = sec.title;
+    mount.appendChild(h);
+
+    const sub = document.createElement("p");
+    sub.className = "section-sub";
+    sub.textContent = sec.subtitle;
+    mount.appendChild(sub);
+
+    const hr = document.createElement("hr");
+    hr.className = "section-divider";
+    mount.appendChild(hr);
+
+    if (sec.custom) {
+      renderCustomSection(mount);
+    } else {
+      sec.questions.forEach((q) => {
+        const block = document.createElement("div");
+        block.className = "q-block";
+
+        const label = document.createElement("p");
+        label.className = "q-text";
+        label.textContent = q.text;
+        block.appendChild(label);
+
+        let input;
+        if (q.type === "short") {
+          input = document.createElement("input");
+          input.type = "text";
+        } else {
+          input = document.createElement("textarea");
+        }
+        input.value = state.answers[q.id] || "";
+        input.dataset.qid = q.id;
+        input.addEventListener("input", (e) => {
+          state.answers[q.id] = e.target.value;
+          scheduleAutosave();
+        });
+        block.appendChild(input);
+
+        // Photo widget for this question (skip the very short identity fields)
+        if (q.type !== "short") {
+          block.appendChild(buildPhotoWidget(
+            () => state.photos[q.id],
+            (arr) => { state.photos[q.id] = arr; },
+            "Optional \u2014 add a picture for this memory if you like"
+          ));
+        }
+
+        mount.appendChild(block);
+      });
+
+      // The very first section also offers an optional cover photo.
+      if (state.sectionIndex === 0) {
+        const hr2 = document.createElement("hr");
+        hr2.className = "section-divider";
+        mount.appendChild(hr2);
+        mount.appendChild(buildCoverWidget());
+      }
+    }
+
+    // Buttons
+    $("btn-back").disabled = state.sectionIndex === 0;
+    $("btn-next").textContent =
+      state.sectionIndex === totalSections - 1 ? "Finish \u2713" : "Next \u2192";
+
+    // Progress
+    const pct = Math.round(((state.sectionIndex) / totalSections) * 100);
+    $("progress-fill").style.width = pct + "%";
+    $("progress-label").textContent = sec.title;
+    $("progress-pct").textContent = (state.sectionIndex + 1) + " / " + totalSections;
+
+    $("who").textContent = state.first + " " + state.last;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ── Custom "In Your Own Words" section ───────────────
+  function renderCustomSection(mount) {
+    const list = document.createElement("div");
+    list.id = "custom-list";
+    mount.appendChild(list);
+
+    function draw() {
+      list.innerHTML = "";
+      state.customEntries.forEach((entry, idx) => {
+        const card = document.createElement("div");
+        card.className = "custom-entry";
+
+        const enum_ = document.createElement("p");
+        enum_.className = "entry-num";
+        enum_.textContent = "Entry " + (idx + 1);
+        card.appendChild(enum_);
+
+        const rm = document.createElement("button");
+        rm.className = "remove-entry";
+        rm.type = "button";
+        rm.textContent = "Remove";
+        rm.addEventListener("click", () => {
+          state.customEntries.splice(idx, 1);
+          draw();
+          scheduleAutosave();
+        });
+        card.appendChild(rm);
+
+        const ql = document.createElement("label");
+        ql.className = "mini-label";
+        ql.textContent = "Your question or topic";
+        card.appendChild(ql);
+        const qInput = document.createElement("input");
+        qInput.type = "text";
+        qInput.placeholder = "e.g. The day I bought my first motorcycle";
+        qInput.value = entry.q || "";
+        qInput.addEventListener("input", (e) => {
+          entry.q = e.target.value; scheduleAutosave();
+        });
+        card.appendChild(qInput);
+
+        const al = document.createElement("label");
+        al.className = "mini-label";
+        al.textContent = "Your answer";
+        card.appendChild(al);
+        const aInput = document.createElement("textarea");
+        aInput.value = entry.a || "";
+        aInput.addEventListener("input", (e) => {
+          entry.a = e.target.value; scheduleAutosave();
+        });
+        card.appendChild(aInput);
+
+        card.appendChild(buildPhotoWidget(
+          () => entry.photos,
+          (arr) => { entry.photos = arr; },
+          "Optional \u2014 add a picture for this story if you like"
+        ));
+
+        list.appendChild(card);
+      });
+    }
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "add-entry-btn";
+    addBtn.type = "button";
+    addBtn.textContent = "\uff0b Add your own question & answer";
+    addBtn.addEventListener("click", () => {
+      state.customEntries.push({ q: "", a: "", photos: [] });
+      draw();
+      // focus the newest question field
+      const inputs = list.querySelectorAll("input[type=text]");
+      if (inputs.length) inputs[inputs.length - 1].focus();
+      scheduleAutosave();
+    });
+
+    draw();
+    mount.appendChild(addBtn);
+  }
+
+  // ── Autosave (debounced) ─────────────────────────────
+  let autosaveTimer = null;
+  function scheduleAutosave() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => remoteSave(false), 1200);
+  }
+
+  // ── Screen switching ─────────────────────────────────
+  function show(screen) {
+    ["screen-login", "screen-wizard", "screen-done"].forEach((id) => {
+      $(id).classList.toggle("hidden", id !== screen);
+    });
+  }
+
+  // ── Flow ─────────────────────────────────────────────
+  async function startOrResume() {
+    const first = $("first").value.trim();
+    const last = $("last").value.trim();
+    const dob = $("dob").value.trim();
+    if (!first || !last || !dob) {
+      toast("Please fill in name and date of birth", true);
+      return;
+    }
+    state.first = first;
+    state.last = last;
+    state.dob = dob;
+    state.respondentKey = normKey(first, last, dob);
+
+    $("btn-start").disabled = true;
+    $("btn-start").textContent = "Loading\u2026";
+
+    const existing = await remoteLoad();
+    if (existing && existing.answers) {
+      state.answers = existing.answers || {};
+      state.photos = existing.photos || {};
+      state.customEntries = existing.customEntries || [];
+      state.coverPhoto = existing.coverPhoto || null;
+      state.sectionIndex = Math.min(existing.sectionIndex || 0, totalSections - 1);
+      toast("Welcome back \u2014 your answers are loaded");
+    } else {
+      state.answers = {};
+      state.photos = {};
+      state.customEntries = [];
+      state.coverPhoto = null;
+      state.sectionIndex = 0;
+    }
+
+    $("btn-start").disabled = false;
+    $("btn-start").textContent = "Begin \u2192";
+
+    show("screen-wizard");
+    renderSection();
+  }
+
+  function next() {
+    if (state.sectionIndex < totalSections - 1) {
+      state.sectionIndex++;
+      remoteSave(false);
+      renderSection();
+    } else {
+      remoteSave(true);
+      show("screen-done");
+    }
+  }
+
+  function back() {
+    if (state.sectionIndex > 0) {
+      state.sectionIndex--;
+      remoteSave(false);
+      renderSection();
+    }
+  }
+
+  function switchUser() {
+    clearTimeout(autosaveTimer);
+    remoteSave(false);
+    state.answers = {};
+    state.photos = {};
+    state.customEntries = [];
+    state.coverPhoto = null;
+    state.sectionIndex = 0;
+    $("first").value = "";
+    $("last").value = "";
+    $("dob").value = "";
+    show("screen-login");
+  }
+
+  // ── Build & trigger print ────────────────────────────
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function photoHTML(list) {
+    if (!list || !list.length) return "";
+    let h = '<div class="print-photos">';
+    list.forEach((p) => {
+      h += '<figure class="print-fig"><img src="' + esc(p.url) + '" alt="">';
+      if (p.caption && p.caption.trim())
+        h += '<figcaption>' + esc(p.caption) + '</figcaption>';
+      h += '</figure>';
+    });
+    h += "</div>";
+    return h;
+  }
+
+  function buildPrint() {
+    const root = $("print-root");
+    const name = (state.first + " " + state.last).trim();
+    const cover = state.coverPhoto && state.coverPhoto.url
+      ? '<img class="cover-img" src="' + esc(state.coverPhoto.url) + '" alt="">'
+      : "";
+    let html =
+      '<div class="print-cover">' +
+      cover +
+      "<h1>" + esc(name) + "</h1>" +
+      "<p>A Life in My Own Words</p>" +
+      (state.dob ? "<p>Born " + esc(state.dob) + "</p>" : "") +
+      "</div>";
+
+    SECTIONS.forEach((sec, si) => {
+      if (sec.custom) {
+        const entries = (state.customEntries || []).filter(
+          (e) => (e.q && e.q.trim()) || (e.a && e.a.trim()));
+        if (!entries.length) return;
+        html += '<section class="print-chapter">';
+        html += '<p class="cnum">Chapter ' + (si + 1) + "</p>";
+        html += "<h2>" + esc(sec.title) + "</h2>";
+        html += '<p class="csub">' + esc(sec.subtitle) + "</p>";
+        entries.forEach((e) => {
+          html += '<div class="print-entry">';
+          if (e.q && e.q.trim()) html += "<h3>" + esc(e.q) + "</h3>";
+          if (e.a && e.a.trim())
+            html += "<p>" + esc(e.a).replace(/\n/g, "</p><p>") + "</p>";
+          html += photoHTML(e.photos);
+          html += "</div>";
+        });
+        html += "</section>";
+        return;
+      }
+
+      const answered = sec.questions.filter(
+        (q) => state.answers[q.id] && String(state.answers[q.id]).trim());
+      const hasPhotos = sec.questions.some(
+        (q) => state.photos[q.id] && state.photos[q.id].length);
+      if (!answered.length && !hasPhotos) return;
+
+      html += '<section class="print-chapter">';
+      html += '<p class="cnum">Chapter ' + (si + 1) + "</p>";
+      html += "<h2>" + esc(sec.title) + "</h2>";
+      html += '<p class="csub">' + esc(sec.subtitle) + "</p>";
+      sec.questions.forEach((q) => {
+        const a = state.answers[q.id];
+        const photos = state.photos[q.id];
+        if ((!a || !String(a).trim()) && (!photos || !photos.length)) return;
+        html += '<div class="print-entry">';
+        html += "<h3>" + esc(q.text) + "</h3>";
+        if (a && String(a).trim())
+          html += "<p>" + esc(a).replace(/\n/g, "</p><p>") + "</p>";
+        html += photoHTML(photos);
+        html += "</div>";
+      });
+      html += "</section>";
+    });
+
+    root.innerHTML = html;
+  }
+
+  function doPrint() {
+    remoteSave(false);
+    buildPrint();
+    // Give the browser a tick to lay out images before printing.
+    setTimeout(() => window.print(), 300);
+  }
+
+  // ── Wire up ──────────────────────────────────────────
+  $("btn-start").addEventListener("click", startOrResume);
+  $("btn-next").addEventListener("click", next);
+  $("btn-back").addEventListener("click", back);
+  $("btn-save").addEventListener("click", () => remoteSave(true));
+  $("btn-switch").addEventListener("click", switchUser);
+  $("btn-print-wizard").addEventListener("click", doPrint);
+  $("btn-print-done").addEventListener("click", doPrint);
+  $("btn-review").addEventListener("click", () => {
+    state.sectionIndex = 0;
+    show("screen-wizard");
+    renderSection();
+  });
+
+  // Enter key on login fields starts the flow
+  ["first", "last", "dob"].forEach((id) => {
+    $(id).addEventListener("keydown", (e) => {
+      if (e.key === "Enter") startOrResume();
+    });
+  });
+
+  renderTOC();
+})();
+</script>
+</body>
+</html>
