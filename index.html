@@ -50,6 +50,26 @@
     text-align: center;
     padding: 24px 0 20px;
   }
+  .top-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 0 0;
+  }
+  .guide-link {
+    font-family: "Newsreader", serif;
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--burgundy);
+    text-decoration: none;
+    border: 1px solid var(--rule);
+    border-radius: 99px;
+    padding: 5px 14px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .guide-link:hover {
+    border-color: var(--gold);
+    background: #faf4ea;
+  }
   .masthead .eyebrow {
     font-family: "Newsreader", serif;
     font-style: italic;
@@ -481,6 +501,7 @@
   @media print {
     body { background: #fff; }
     .wrap > header.masthead,
+    .wrap > .top-bar,
     #screen-login, #screen-wizard, #screen-done,
     .toast { display: none !important; }
     #print-root { display: block !important; }
@@ -561,6 +582,11 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="top-bar">
+    <a href="user-guide.pdf" target="_blank" rel="noopener" class="guide-link">
+      &#9783; How to use this &mdash; a quick guide
+    </a>
+  </div>
   <header class="masthead">
     <p class="eyebrow">A keepsake for those who come after</p>
     <h1>A Life in Your Own Words</h1>
