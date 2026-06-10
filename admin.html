@@ -79,6 +79,8 @@
        font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; }
   tr.clickable { cursor: pointer; }
   tr.clickable:hover { background: #f3ead9; }
+  tr.selected { background: #efe2cb; }
+  tr.selected:hover { background: #e9dabf; }
   .pill {
     display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 0.78rem;
     background: var(--rule-soft); color: var(--ink-soft); padding: 2px 9px; border-radius: 99px;
@@ -150,6 +152,8 @@
     <div class="card">
       <div class="toolbar">
         <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh</button>
+        <button class="btn btn-sm hidden" id="btn-delete-selected"
+          style="background:transparent;color:#a23b3b;border:1px solid #d9a3a3;">Delete selected</button>
         <span class="spacer"></span>
         <button class="btn btn-ghost btn-sm" id="btn-export-csv">Export all (CSV)</button>
         <button class="btn btn-ghost btn-sm" id="btn-export-json">Export all (JSON)</button>
@@ -235,6 +239,16 @@
       .from("responses")
       .delete()
       .eq("respondent_key", row.respondent_key);
+    if (error) { console.error(error); toast("Delete failed \u2014 try again", true); return false; }
+    return true;
+  }
+
+  async function deleteKeys(keys) {
+    if (!sb) { toast("Supabase not configured", true); return false; }
+    const { error } = await sb
+      .from("responses")
+      .delete()
+      .in("respondent_key", keys);
     if (error) { console.error(error); toast("Delete failed \u2014 try again", true); return false; }
     return true;
   }
@@ -330,32 +344,94 @@
     renderTable();
   }
 
+  // Tracks which respondent_keys are checked for bulk delete.
+  let selectedKeys = new Set();
+
+  function updateBulkBar() {
+    const btn = $("btn-delete-selected");
+    const n = selectedKeys.size;
+    btn.classList.toggle("hidden", n === 0);
+    btn.textContent = n === 0 ? "Delete selected" : "Delete selected (" + n + ")";
+    const all = $("select-all");
+    if (all) {
+      all.checked = rows.length > 0 && selectedKeys.size === rows.length;
+      all.indeterminate = selectedKeys.size > 0 && selectedKeys.size < rows.length;
+    }
+  }
+
   function renderTable() {
     const mount = $("table-mount");
+    selectedKeys = new Set(); // reset selection on each (re)render
     if (!rows.length) {
       mount.innerHTML = '<p class="muted center">No responses yet.</p>';
+      updateBulkBar();
       return;
     }
     const t = document.createElement("table");
     t.innerHTML = "<thead><tr>" +
+      "<th style='width:34px;'><input type='checkbox' id='select-all' title='Select all'></th>" +
       "<th>Name</th><th>Date of birth</th><th>Progress</th><th>Last saved</th>" +
       "</tr></thead>";
     const tb = document.createElement("tbody");
     rows.forEach((r, i) => {
       const c = completion(r.answers);
       const tr = document.createElement("tr");
+
+      // Checkbox cell
+      const tdCheck = document.createElement("td");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.dataset.key = r.respondent_key;
+      cb.addEventListener("click", (e) => e.stopPropagation()); // don't open detail
+      cb.addEventListener("change", (e) => {
+        if (e.target.checked) selectedKeys.add(r.respondent_key);
+        else selectedKeys.delete(r.respondent_key);
+        tr.classList.toggle("selected", e.target.checked);
+        updateBulkBar();
+      });
+      tdCheck.appendChild(cb);
+      tr.appendChild(tdCheck);
+
+      // Data cells
+      const coupleTag = r.is_couple ? " <span class='pill'>couple</span>" : "";
+      const cells = document.createElement("td");
+      cells.innerHTML = esc(r.first_name) + " " + esc(r.last_name) + coupleTag;
+      tr.appendChild(cells);
+      const tdDob = document.createElement("td");
+      tdDob.textContent = r.dob || "";
+      tr.appendChild(tdDob);
+      const tdProg = document.createElement("td");
+      tdProg.innerHTML = "<span class='pill'>" + c.filled + "/" + c.total + " &middot; " + c.pct + "%</span>";
+      tr.appendChild(tdProg);
+      const tdSaved = document.createElement("td");
+      tdSaved.className = "completion";
+      tdSaved.textContent = fmtDate(r.updated_at);
+      tr.appendChild(tdSaved);
+
       tr.className = "clickable";
-      tr.innerHTML =
-        "<td>" + esc(r.first_name) + " " + esc(r.last_name) + "</td>" +
-        "<td>" + esc(r.dob || "") + "</td>" +
-        "<td><span class='pill'>" + c.filled + "/" + c.total + " &middot; " + c.pct + "%</span></td>" +
-        "<td class='completion'>" + fmtDate(r.updated_at) + "</td>";
       tr.addEventListener("click", () => openDetail(i));
       tb.appendChild(tr);
     });
     t.appendChild(tb);
     mount.innerHTML = "";
     mount.appendChild(t);
+
+    // Select-all wiring
+    const all = $("select-all");
+    all.addEventListener("click", (e) => e.stopPropagation());
+    all.addEventListener("change", (e) => {
+      const on = e.target.checked;
+      const boxes = tb.querySelectorAll("input[type=checkbox]");
+      for (let j = 0; j < boxes.length; j++) {
+        boxes[j].checked = on;
+        const key = boxes[j].dataset.key;
+        if (on) selectedKeys.add(key); else selectedKeys.delete(key);
+        boxes[j].parentNode.parentNode.classList.toggle("selected", on);
+      }
+      updateBulkBar();
+    });
+
+    updateBulkBar();
   }
 
   function esc(s) {
@@ -604,19 +680,19 @@
   }
 
   // Delete confirmation: requires typing DELETE.
-  function confirmDelete(row) {
+  // Generic type-DELETE-to-confirm modal. `bodyHTML` describes what's being
+  // deleted; `onConfirm` is an async function that performs the deletion.
+  function confirmDeleteModal(bodyHTML, onConfirm) {
     const overlay = document.createElement("div");
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(43,36,32,0.5);" +
       "display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;";
     const box = document.createElement("div");
     box.style.cssText = "background:#fffdf8;border:1px solid #ddd0bd;border-radius:6px;" +
       "max-width:440px;padding:28px 30px;box-shadow:0 20px 50px -20px rgba(0,0,0,0.4);";
-    const name = (row.first_name || "") + " " + (row.last_name || "");
     box.innerHTML =
-      "<h2 style='color:#a23b3b;margin:0 0 10px;font-family:\"Fraunces\",serif;'>Delete this response?</h2>" +
-      "<p style='margin:0 0 8px;'>This permanently deletes <strong>" + esc(name.trim()) +
-      "</strong>\u2019s entire story, including all answers and photos. This cannot be undone.</p>" +
-      "<p style='margin:0 0 6px;color:#6f6258;font-size:0.9rem;'>Type <strong>DELETE</strong> to confirm:</p>";
+      "<h2 style='color:#a23b3b;margin:0 0 10px;font-family:\"Fraunces\",serif;'>Are you sure?</h2>" +
+      bodyHTML +
+      "<p style='margin:10px 0 6px;color:#6f6258;font-size:0.9rem;'>Type <strong>DELETE</strong> to confirm:</p>";
     const input = document.createElement("input");
     input.type = "text";
     input.style.cssText = "width:100%;padding:10px 12px;border:1px solid #ddd0bd;border-radius:3px;" +
@@ -643,20 +719,49 @@
     confirm.addEventListener("click", async () => {
       if (input.value.trim() !== "DELETE") return;
       confirm.textContent = "Deleting\u2026"; confirm.disabled = true;
-      const ok = await deleteRow(row);
+      await onConfirm();
       overlay.remove();
-      if (ok) {
-        toast("Response deleted");
-        rows = rows.filter((r) => r.respondent_key !== row.respondent_key);
-        show("admin-dash");
-        renderTable();
-      }
     });
     row2.appendChild(cancel); row2.appendChild(confirm);
     box.appendChild(row2);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     input.focus();
+  }
+
+  function confirmDelete(row) {
+    const name = ((row.first_name || "") + " " + (row.last_name || "")).trim();
+    confirmDeleteModal(
+      "<p style='margin:0 0 8px;'>This permanently deletes <strong>" + esc(name) +
+      "</strong>\u2019s entire story, including all answers and photos. This cannot be undone.</p>",
+      async () => {
+        const ok = await deleteRow(row);
+        if (ok) {
+          toast("Response deleted");
+          rows = rows.filter((r) => r.respondent_key !== row.respondent_key);
+          show("admin-dash");
+          renderTable();
+        }
+      });
+  }
+
+  function confirmBulkDelete() {
+    const keys = Array.from(selectedKeys);
+    if (!keys.length) return;
+    const n = keys.length;
+    confirmDeleteModal(
+      "<p style='margin:0 0 8px;'>This permanently deletes <strong>" + n +
+      " response" + (n === 1 ? "" : "s") + "</strong>, including all their answers " +
+      "and photos. This cannot be undone.</p>",
+      async () => {
+        const ok = await deleteKeys(keys);
+        if (ok) {
+          toast(n + " response" + (n === 1 ? "" : "s") + " deleted");
+          rows = rows.filter((r) => selectedKeys.has(r.respondent_key) === false);
+          selectedKeys = new Set();
+          renderTable();
+        }
+      });
   }
 
   // ── Exports ──────────────────────────────────────────
@@ -864,6 +969,7 @@ body +
   $("btn-login").addEventListener("click", login);
   $("pass").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
   $("btn-refresh").addEventListener("click", loadRows);
+  $("btn-delete-selected").addEventListener("click", confirmBulkDelete);
   $("btn-export-csv").addEventListener("click", exportCSV);
   $("btn-export-json").addEventListener("click", exportJSON);
   $("btn-back-list").addEventListener("click", () => { show("admin-dash"); });

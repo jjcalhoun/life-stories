@@ -171,6 +171,7 @@
   }
   .btn-ghost:hover { border-color: var(--burgundy); }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-sm { padding: 8px 16px; font-size: 0.9rem; }
 
   .btn-row {
     display: flex;
@@ -180,6 +181,7 @@
     margin-top: 32px;
   }
   .btn-row .spacer { flex: 1; }
+  .btn-row.top-nav { margin-top: 16px; }
 
   /* ── Progress ───────────────────────────────────────── */
   .progress-wrap { margin: 30px 0 6px; }
@@ -617,6 +619,11 @@
       </div>
       <div class="progress-track"><div class="progress-fill" id="progress-fill-top" style="width:0%"></div></div>
       <nav class="section-nav" id="section-nav" aria-label="Jump to section"></nav>
+      <div class="btn-row top-nav">
+        <button class="btn btn-ghost btn-sm" id="btn-back-top">&larr; Back</button>
+        <span class="spacer"></span>
+        <button class="btn btn-primary btn-sm" id="btn-next-top">Next &rarr;</button>
+      </div>
     </div>
 
     <div id="section-mount"></div>
@@ -1229,10 +1236,13 @@
       }
     }
 
-    // Buttons
-    $("btn-back").disabled = state.sectionIndex === 0;
-    $("btn-next").textContent =
-      state.sectionIndex === totalSections - 1 ? "Finish \u2713" : "Next \u2192";
+    // Buttons (top and bottom)
+    const atStart = state.sectionIndex === 0;
+    const nextLabel = state.sectionIndex === totalSections - 1 ? "Finish \u2713" : "Next \u2192";
+    $("btn-back").disabled = atStart;
+    $("btn-back-top").disabled = atStart;
+    $("btn-next").textContent = nextLabel;
+    $("btn-next-top").textContent = nextLabel;
 
     // Progress (both bars)
     const pct = Math.round(((state.sectionIndex) / totalSections) * 100);
@@ -1624,6 +1634,8 @@
   $("btn-start").addEventListener("click", startOrResume);
   $("btn-next").addEventListener("click", next);
   $("btn-back").addEventListener("click", back);
+  $("btn-next-top").addEventListener("click", next);
+  $("btn-back-top").addEventListener("click", back);
   $("btn-save").addEventListener("click", () => remoteSave(true));
   $("btn-switch").addEventListener("click", switchUser);
   $("btn-split-couple").addEventListener("click", confirmSplitCouple);

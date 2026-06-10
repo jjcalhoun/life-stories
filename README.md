@@ -179,7 +179,8 @@ at all, and people can skip any of it.
   and can be removed or skipped.
 - **Jump between sections.** A row of section buttons sits under the progress
   bar (shown at both the top and bottom of each page), so people can move
-  around freely instead of only going next/back.
+  around freely instead of only going next/back. Back and Next buttons appear
+  at both the top and bottom of every page too.
 - **Print their own copy.** There's a "print my answers" link at the bottom of
   the questionnaire and a "Print or save my book" button on the final screen.
   It opens their browser's print dialog laid out as a clean little book, cover
@@ -201,6 +202,10 @@ at all, and people can skip any of it.
 - **Delete a response.** At the bottom of each detail view is a delete button;
   it asks you to type `DELETE` to confirm, since this permanently removes that
   person's whole story and can't be undone.
+- **Delete several at once.** On the main list, each row has a checkbox (plus a
+  select-all box in the header). Tick the ones you want and a "Delete selected"
+  button appears in the toolbar — it asks you to type `DELETE` before removing
+  them all.
 - **Export all (CSV)** opens in Excel/Sheets — one row per person, columns for
   each question (couple answers labeled by name), plus couple info and their
   free-text final section.
