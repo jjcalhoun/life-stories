@@ -176,11 +176,9 @@ const SECTIONS = [
   {
     id: "your_own",
     title: "In Your Own Words",
-    subtitle: "You've answered all of my questions \u2014 now the page is yours. Is there anything else you'd like to share? Add as many of your own questions and stories as you like.",
-    // This section is special: the respondent writes their OWN question
-    // prompts and answers. Stored as an array under the key below.
-    custom: true,
-    customKey: "custom_entries",
+    subtitle: "You've answered all of my questions \u2014 now the page is yours. Is there anything else you'd like to share? A memory, a story, a message to your family \u2014 anything at all.",
+    openField: true,
+    openKey: "own_words",
     questions: [],
   },
 ];

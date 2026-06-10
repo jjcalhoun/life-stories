@@ -203,6 +203,84 @@
     border-radius: 99px;
     transition: width 0.4s ease;
   }
+  .progress-wrap.top {
+    margin: 0 0 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  /* ── Section navigation chips ───────────────────────── */
+  .section-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .section-nav button {
+    font-family: "Newsreader", serif;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    color: var(--ink-soft);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 99px;
+    padding: 4px 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .section-nav button:hover { border-color: var(--gold); color: var(--burgundy); }
+  .section-nav button.current {
+    background: var(--burgundy);
+    color: #fff7ee;
+    border-color: var(--burgundy);
+  }
+  .section-nav button.done {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .section-nav button.done.current {
+    background: var(--burgundy); color: #fff7ee; border-color: var(--burgundy);
+  }
+  @media (max-width: 560px) {
+    .section-nav button { font-size: 0.72rem; padding: 3px 9px; }
+  }
+
+  /* ── Mode toggle (solo / couple) ────────────────────── */
+  .mode-toggle, .split-toggle {
+    display: inline-flex;
+    border: 1px solid var(--rule);
+    border-radius: 99px;
+    overflow: hidden;
+    background: #fffefb;
+  }
+  .mode-opt, .split-opt {
+    font-family: "Fraunces", serif;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    background: transparent;
+    border: none;
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .mode-opt.current, .split-opt.current {
+    background: var(--burgundy);
+    color: #fff7ee;
+  }
+  .split-toggle { transform: scale(0.9); transform-origin: left; margin: 4px 0 10px; }
+  .split-opt { font-size: 0.8rem; padding: 5px 13px; }
+
+  /* ── Couple split answer fields ─────────────────────── */
+  .split-field { margin-bottom: 10px; }
+  .split-name {
+    display: block;
+    font-family: "Fraunces", serif;
+    font-size: 0.82rem;
+    color: var(--burgundy);
+    margin: 0 0 4px;
+    font-weight: 500;
+  }
 
   /* ── Section heading inside wizard ──────────────────── */
   .section-num {
@@ -420,6 +498,10 @@
     font-size: 1.05rem; margin: 0 0 4px;
   }
   .print-entry p { margin: 0 0 8px; text-align: justify; }
+  .print-entry .ans-name {
+    font-family: "Fraunces", serif; font-weight: 500; color: var(--burgundy);
+    font-size: 0.9rem; margin: 6px 0 0; text-align: left;
+  }
   .print-photos { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 4px; }
   .print-fig { margin: 0; max-width: 46%; }
   .print-fig img {
@@ -478,8 +560,17 @@
       <p class="muted">To begin, or to pick up where you left off, tell us who you are. Your name and date of birth are how we&rsquo;ll find your saved answers when you return.</p>
     </div>
     <hr class="section-divider" />
+
     <div class="field">
-      <label class="field-label" for="first">First name</label>
+      <span class="field-label">Are you filling this out on your own, or as a couple?</span>
+      <div class="mode-toggle" id="mode-toggle">
+        <button type="button" class="mode-opt current" data-mode="solo">On my own</button>
+        <button type="button" class="mode-opt" data-mode="couple">As a couple</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="first"><span id="lbl-first">First name</span></label>
       <input type="text" id="first" autocomplete="given-name" />
     </div>
     <div class="field">
@@ -487,9 +578,29 @@
       <input type="text" id="last" autocomplete="family-name" />
     </div>
     <div class="field">
-      <label class="field-label" for="dob">Date of birth</label>
+      <label class="field-label" for="dob"><span id="lbl-dob">Date of birth</span></label>
       <input type="date" id="dob" />
     </div>
+
+    <div id="partner-fields" class="hidden">
+      <div class="field">
+        <label class="field-label" for="first2">Partner&rsquo;s first name</label>
+        <input type="text" id="first2" autocomplete="given-name" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="last2">Partner&rsquo;s last name</label>
+        <input type="text" id="last2" autocomplete="family-name" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="dob2">Partner&rsquo;s date of birth</label>
+        <input type="date" id="dob2" />
+      </div>
+      <p class="muted" style="font-size:0.88rem;font-style:italic;margin-top:-6px;">
+        Either of you can sign in later with your own name and date of birth to
+        reach the same shared story.
+      </p>
+    </div>
+
     <div class="btn-row">
       <span class="save-note">Your progress saves automatically as you go.</span>
       <button class="btn btn-primary" id="btn-start">Begin &rarr;</button>
@@ -499,6 +610,15 @@
 
   <!-- ── SCREEN: Wizard ───────────────────────────────── -->
   <section id="screen-wizard" class="card hidden">
+    <div class="progress-wrap top">
+      <div class="progress-meta">
+        <span id="progress-label-top"></span>
+        <span id="progress-pct-top"></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill-top" style="width:0%"></div></div>
+      <nav class="section-nav" id="section-nav" aria-label="Jump to section"></nav>
+    </div>
+
     <div id="section-mount"></div>
 
     <div class="btn-row">
@@ -521,6 +641,10 @@
       <button id="btn-switch">not you?</button>
       &middot;
       <button id="btn-print-wizard">print my answers</button>
+      <span id="split-couple-wrap" class="hidden">
+        &middot;
+        <button id="btn-split-couple">fill out separately</button>
+      </span>
     </div>
   </section>
 
@@ -536,6 +660,11 @@
       <button class="btn btn-primary" id="btn-print-done">Print or save my book</button>
     </div>
   </section>
+</div>
+
+<!-- Discrete keeper's-desk link -->
+<div style="text-align:center;padding:0 0 40px;">
+  <a href="admin.html" style="color:#b9ab98;font-size:0.78rem;text-decoration:none;font-family:'Newsreader',serif;font-style:italic;">keeper&rsquo;s desk</a>
 </div>
 
 <!-- Hidden print layout, populated on demand -->
@@ -592,15 +721,20 @@
   const state = {
     respondentKey: null,   // normalized id
     first: "", last: "", dob: "",
-    answers: {},           // { questionId: value }
+    isCouple: false,
+    first2: "", last2: "", dob2: "",
+    answers: {},           // { questionId: string | {p1, p2} }
     photos: {},            // { questionId: [ {url, path, caption} ] }
-    customEntries: [],      // [ {q, a, photos:[...]} ]
+    ownWords: "",           // free-text final section
+    openPhotos: [],         // photos for the final open section
     coverPhoto: null,       // { url, path } or null  (optional)
     sectionIndex: 0,
   };
 
+  let loginMode = "solo"; // UI state before starting
+
   const totalSections = SECTIONS.length;
-  const CUSTOM_SECTION = SECTIONS.find((s) => s.custom);
+  const OPEN_SECTION = SECTIONS.find((s) => s.openField);
 
   // ── Helpers ──────────────────────────────────────────
   const $ = (id) => document.getElementById(id);
@@ -617,8 +751,11 @@
     try {
       localStorage.setItem(localKey(), JSON.stringify({
         first: state.first, last: state.last, dob: state.dob,
+        isCouple: state.isCouple,
+        first2: state.first2, last2: state.last2, dob2: state.dob2,
         answers: state.answers, photos: state.photos,
-        customEntries: state.customEntries, coverPhoto: state.coverPhoto,
+        ownWords: state.ownWords, openPhotos: state.openPhotos,
+        coverPhoto: state.coverPhoto,
         sectionIndex: state.sectionIndex,
       }));
     } catch (e) {}
@@ -651,12 +788,20 @@
     }
     const row = {
       respondent_key: state.respondentKey,
+      partner_key: state.isCouple
+        ? normKey(state.first2, state.last2, state.dob2)
+        : null,
       first_name: state.first,
       last_name: state.last,
       dob: state.dob,
+      is_couple: state.isCouple,
+      partner: state.isCouple
+        ? { first: state.first2, last: state.last2, dob: state.dob2 }
+        : null,
       answers: state.answers,
       photos: state.photos,
-      custom_entries: state.customEntries,
+      own_words: state.ownWords,
+      open_photos: state.openPhotos,
       cover_photo: state.coverPhoto,
       section_index: state.sectionIndex,
       updated_at: new Date().toISOString(),
@@ -674,22 +819,42 @@
 
   async function remoteLoad() {
     if (!sb) return loadLocal();
-    const { data, error } = await sb
-      .from("responses")
-      .select("answers, photos, custom_entries, cover_photo, section_index, first_name, last_name, dob")
-      .eq("respondent_key", state.respondentKey)
-      .maybeSingle();
-    if (error) { console.error(error); return loadLocal(); }
-    if (data) {
+    const k = state.respondentKey;
+
+    function mapRow(data) {
+      const partner = data.partner || {};
       return {
         answers: data.answers || {},
         photos: data.photos || {},
-        customEntries: data.custom_entries || [],
+        ownWords: data.own_words || "",
+        openPhotos: data.open_photos || [],
         coverPhoto: data.cover_photo || null,
         sectionIndex: data.section_index || 0,
         first: data.first_name, last: data.last_name, dob: data.dob,
+        isCouple: !!data.is_couple,
+        first2: partner.first || "", last2: partner.last || "", dob2: partner.dob || "",
+        primaryKey: data.respondent_key,
+        loadedKey: data.respondent_key,
       };
     }
+
+    const SEL = "answers, photos, own_words, open_photos, cover_photo, section_index, first_name, last_name, dob, is_couple, partner, respondent_key, partner_key";
+
+    // 1) A solo row (including one created by splitting a couple) takes
+    //    precedence, so an independent login always lands on its own story.
+    const solo = await sb.from("responses").select(SEL)
+      .eq("respondent_key", k + "|solo").maybeSingle();
+    if (solo.error) console.error(solo.error);
+    if (solo.data) return mapRow(solo.data);
+
+    // 2) Otherwise match a shared couple story by either partner's key.
+    const { data, error } = await sb
+      .from("responses").select(SEL)
+      .or("respondent_key.eq." + k + ",partner_key.eq." + k)
+      .maybeSingle();
+    if (error) { console.error(error); return loadLocal(); }
+    if (data) return mapRow(data);
+
     return loadLocal();
   }
 
@@ -916,6 +1081,85 @@
   }
 
   // ── Rendering ────────────────────────────────────────
+
+  // Build the answer input(s) for a question. For couples, each question can
+  // be answered together (one box) or separately (one box per partner). The
+  // answer value is a plain string when together, or {p1, p2} when separate.
+  function buildAnswerArea(q) {
+    const container = document.createElement("div");
+    const isShort = q.type === "short";
+
+    function makeInput(val, onInput) {
+      const el = document.createElement(isShort ? "input" : "textarea");
+      if (isShort) el.type = "text";
+      el.value = val || "";
+      el.dataset.qid = q.id;
+      el.addEventListener("input", (e) => { onInput(e.target.value); scheduleAutosave(); });
+      return el;
+    }
+
+    function renderTogether() {
+      const cur = state.answers[q.id];
+      const val = (cur && typeof cur === "object") ? (cur.p1 || cur.p2 || "") : (cur || "");
+      container.appendChild(makeInput(val, (v) => { state.answers[q.id] = v; }));
+    }
+
+    function renderSeparate() {
+      let cur = state.answers[q.id];
+      if (!cur || typeof cur !== "object") cur = { p1: typeof cur === "string" ? cur : "", p2: "" };
+      state.answers[q.id] = cur;
+
+      const f1 = document.createElement("div");
+      f1.className = "split-field";
+      const n1 = document.createElement("span");
+      n1.className = "split-name";
+      n1.textContent = state.first || "Partner 1";
+      f1.appendChild(n1);
+      f1.appendChild(makeInput(cur.p1, (v) => { cur.p1 = v; }));
+      container.appendChild(f1);
+
+      const f2 = document.createElement("div");
+      f2.className = "split-field";
+      const n2 = document.createElement("span");
+      n2.className = "split-name";
+      n2.textContent = state.first2 || "Partner 2";
+      f2.appendChild(n2);
+      f2.appendChild(makeInput(cur.p2, (v) => { cur.p2 = v; }));
+      container.appendChild(f2);
+    }
+
+    function draw(mode) {
+      container.innerHTML = "";
+      // Couple toggle (only for couples, and not on the short identity fields)
+      if (state.isCouple) {
+        const tog = document.createElement("div");
+        tog.className = "split-toggle";
+        const optT = document.createElement("button");
+        optT.type = "button"; optT.className = "split-opt" + (mode === "together" ? " current" : "");
+        optT.textContent = "Together";
+        const optS = document.createElement("button");
+        optS.type = "button"; optS.className = "split-opt" + (mode === "separate" ? " current" : "");
+        optS.textContent = "Separately";
+        optT.addEventListener("click", () => {
+          // collapse to a single string, preferring existing p1
+          const cur = state.answers[q.id];
+          if (cur && typeof cur === "object") state.answers[q.id] = cur.p1 || cur.p2 || "";
+          scheduleAutosave(); draw("together");
+        });
+        optS.addEventListener("click", () => { draw("separate"); scheduleAutosave(); });
+        tog.appendChild(optT); tog.appendChild(optS);
+        container.appendChild(tog);
+      }
+      if (mode === "separate") renderSeparate();
+      else renderTogether();
+    }
+
+    const existing = state.answers[q.id];
+    const startMode = (existing && typeof existing === "object") ? "separate" : "together";
+    draw(startMode);
+    return container;
+  }
+
   function renderTOC() {
     const ul = $("toc");
     ul.innerHTML = "";
@@ -950,8 +1194,8 @@
     hr.className = "section-divider";
     mount.appendChild(hr);
 
-    if (sec.custom) {
-      renderCustomSection(mount);
+    if (sec.openField) {
+      renderOpenSection(mount);
     } else {
       sec.questions.forEach((q) => {
         const block = document.createElement("div");
@@ -962,20 +1206,7 @@
         label.textContent = q.text;
         block.appendChild(label);
 
-        let input;
-        if (q.type === "short") {
-          input = document.createElement("input");
-          input.type = "text";
-        } else {
-          input = document.createElement("textarea");
-        }
-        input.value = state.answers[q.id] || "";
-        input.dataset.qid = q.id;
-        input.addEventListener("input", (e) => {
-          state.answers[q.id] = e.target.value;
-          scheduleAutosave();
-        });
-        block.appendChild(input);
+        block.appendChild(buildAnswerArea(q));
 
         // Photo widget for this question (skip the very short identity fields)
         if (q.type !== "short") {
@@ -1003,94 +1234,62 @@
     $("btn-next").textContent =
       state.sectionIndex === totalSections - 1 ? "Finish \u2713" : "Next \u2192";
 
-    // Progress
+    // Progress (both bars)
     const pct = Math.round(((state.sectionIndex) / totalSections) * 100);
-    $("progress-fill").style.width = pct + "%";
-    $("progress-label").textContent = sec.title;
-    $("progress-pct").textContent = (state.sectionIndex + 1) + " / " + totalSections;
+    const counter = (state.sectionIndex + 1) + " / " + totalSections;
+    ["", "-top"].forEach((sfx) => {
+      $("progress-fill" + sfx).style.width = pct + "%";
+      $("progress-label" + sfx).textContent = sec.title;
+      $("progress-pct" + sfx).textContent = counter;
+    });
 
-    $("who").textContent = state.first + " " + state.last;
+    renderSectionNav();
+
+    $("who").textContent = state.isCouple
+      ? (state.first + " & " + state.first2 + " " + state.last)
+      : (state.first + " " + state.last);
+    $("split-couple-wrap").classList.toggle("hidden", !state.isCouple);
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // ── Custom "In Your Own Words" section ───────────────
-  function renderCustomSection(mount) {
-    const list = document.createElement("div");
-    list.id = "custom-list";
-    mount.appendChild(list);
-
-    function draw() {
-      list.innerHTML = "";
-      state.customEntries.forEach((entry, idx) => {
-        const card = document.createElement("div");
-        card.className = "custom-entry";
-
-        const enum_ = document.createElement("p");
-        enum_.className = "entry-num";
-        enum_.textContent = "Entry " + (idx + 1);
-        card.appendChild(enum_);
-
-        const rm = document.createElement("button");
-        rm.className = "remove-entry";
-        rm.type = "button";
-        rm.textContent = "Remove";
-        rm.addEventListener("click", () => {
-          state.customEntries.splice(idx, 1);
-          draw();
-          scheduleAutosave();
-        });
-        card.appendChild(rm);
-
-        const ql = document.createElement("label");
-        ql.className = "mini-label";
-        ql.textContent = "Your question or topic";
-        card.appendChild(ql);
-        const qInput = document.createElement("input");
-        qInput.type = "text";
-        qInput.placeholder = "e.g. The day I bought my first motorcycle";
-        qInput.value = entry.q || "";
-        qInput.addEventListener("input", (e) => {
-          entry.q = e.target.value; scheduleAutosave();
-        });
-        card.appendChild(qInput);
-
-        const al = document.createElement("label");
-        al.className = "mini-label";
-        al.textContent = "Your answer";
-        card.appendChild(al);
-        const aInput = document.createElement("textarea");
-        aInput.value = entry.a || "";
-        aInput.addEventListener("input", (e) => {
-          entry.a = e.target.value; scheduleAutosave();
-        });
-        card.appendChild(aInput);
-
-        card.appendChild(buildPhotoWidget(
-          () => entry.photos,
-          (arr) => { entry.photos = arr; },
-          "Optional \u2014 add a picture for this story if you like"
-        ));
-
-        list.appendChild(card);
+  // ── Clickable section navigation ─────────────────────
+  function renderSectionNav() {
+    const nav = $("section-nav");
+    nav.innerHTML = "";
+    SECTIONS.forEach((s, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = (i + 1) + ". " + s.title;
+      if (i === state.sectionIndex) b.classList.add("current");
+      else if (i < state.sectionIndex) b.classList.add("done");
+      b.addEventListener("click", () => {
+        if (i === state.sectionIndex) return;
+        state.sectionIndex = i;
+        remoteSave(false);
+        renderSection();
       });
-    }
+      nav.appendChild(b);
+    });
+  }
 
-    const addBtn = document.createElement("button");
-    addBtn.className = "add-entry-btn";
-    addBtn.type = "button";
-    addBtn.textContent = "\uff0b Add your own question & answer";
-    addBtn.addEventListener("click", () => {
-      state.customEntries.push({ q: "", a: "", photos: [] });
-      draw();
-      // focus the newest question field
-      const inputs = list.querySelectorAll("input[type=text]");
-      if (inputs.length) inputs[inputs.length - 1].focus();
+  // ── Open "In Your Own Words" section ─────────────────
+  function renderOpenSection(mount) {
+    const ta = document.createElement("textarea");
+    ta.value = state.ownWords || "";
+    ta.placeholder = "Write anything you like here\u2026";
+    ta.style.minHeight = "320px";
+    ta.addEventListener("input", (e) => {
+      state.ownWords = e.target.value;
       scheduleAutosave();
     });
+    mount.appendChild(ta);
 
-    draw();
-    mount.appendChild(addBtn);
+    mount.appendChild(buildPhotoWidget(
+      () => state.openPhotos,
+      (arr) => { state.openPhotos = arr; },
+      "Optional \u2014 add any photos you like to this section"
+    ));
   }
 
   // ── Autosave (debounced) ─────────────────────────────
@@ -1121,6 +1320,22 @@
     state.dob = dob;
     state.respondentKey = normKey(first, last, dob);
 
+    const couple = loginMode === "couple";
+    if (couple) {
+      const f2 = $("first2").value.trim();
+      const l2 = $("last2").value.trim();
+      const d2 = $("dob2").value.trim();
+      if (!f2 || !l2 || !d2) {
+        toast("Please fill in both partners' details", true);
+        return;
+      }
+      state.isCouple = true;
+      state.first2 = f2; state.last2 = l2; state.dob2 = d2;
+    } else {
+      state.isCouple = false;
+      state.first2 = ""; state.last2 = ""; state.dob2 = "";
+    }
+
     $("btn-start").disabled = true;
     $("btn-start").textContent = "Loading\u2026";
 
@@ -1128,14 +1343,29 @@
     if (existing && existing.answers) {
       state.answers = existing.answers || {};
       state.photos = existing.photos || {};
-      state.customEntries = existing.customEntries || [];
+      state.ownWords = existing.ownWords || "";
+      state.openPhotos = existing.openPhotos || [];
       state.coverPhoto = existing.coverPhoto || null;
       state.sectionIndex = Math.min(existing.sectionIndex || 0, totalSections - 1);
+      // Always write back to the exact row we loaded (handles couple rows
+      // keyed to partner 1, and solo rows created by splitting, keyed "…|solo").
+      if (existing.loadedKey) state.respondentKey = existing.loadedKey;
+      if (existing.isCouple) {
+        state.isCouple = true;
+        state.first = existing.first; state.last = existing.last; state.dob = existing.dob;
+        state.first2 = existing.first2; state.last2 = existing.last2; state.dob2 = existing.dob2;
+      } else {
+        // A solo (or split-solo) row: adopt its identity, drop couple state.
+        state.isCouple = false;
+        state.first = existing.first; state.last = existing.last; state.dob = existing.dob;
+        state.first2 = ""; state.last2 = ""; state.dob2 = "";
+      }
       toast("Welcome back \u2014 your answers are loaded");
     } else {
       state.answers = {};
       state.photos = {};
-      state.customEntries = [];
+      state.ownWords = "";
+      state.openPhotos = [];
       state.coverPhoto = null;
       state.sectionIndex = 0;
     }
@@ -1171,13 +1401,118 @@
     remoteSave(false);
     state.answers = {};
     state.photos = {};
-    state.customEntries = [];
+    state.ownWords = "";
+    state.openPhotos = [];
     state.coverPhoto = null;
+    state.isCouple = false;
+    state.first2 = ""; state.last2 = ""; state.dob2 = "";
     state.sectionIndex = 0;
     $("first").value = "";
     $("last").value = "";
     $("dob").value = "";
+    if ($("first2")) $("first2").value = "";
+    if ($("last2")) $("last2").value = "";
+    if ($("dob2")) $("dob2").value = "";
     show("screen-login");
+  }
+
+  // ── Split a couple into two independent solo stories ──
+  // Keeps the original shared row, and writes two new solo rows. "Together"
+  // answers (plain strings) are copied to both; "separate" answers ({p1,p2})
+  // are routed to their owner. Photos, cover, and the open section are shared
+  // content, so they're copied into both. After splitting, the current session
+  // continues as the partner whose key matches who's signed in (defaults to
+  // partner 1).
+  function deepCopy(obj) { return JSON.parse(JSON.stringify(obj || null)); }
+
+  function buildSoloAnswers(which) {
+    const out = {};
+    Object.keys(state.answers || {}).forEach((qid) => {
+      const v = state.answers[qid];
+      if (v && typeof v === "object") {
+        out[qid] = (which === "p1") ? (v.p1 || "") : (v.p2 || "");
+      } else {
+        out[qid] = v || ""; // together answer copied to both
+      }
+    });
+    return out;
+  }
+
+  async function splitCouple() {
+    if (!state.isCouple) return;
+
+    // Distinct solo keys; suffix avoids colliding with the shared row, which
+    // is keyed to partner 1's plain key.
+    const k1 = normKey(state.first, state.last, state.dob) + "|solo";
+    const k2 = normKey(state.first2, state.last2, state.dob2) + "|solo";
+    const now = new Date().toISOString();
+
+    const base = {
+      is_couple: false,
+      partner: null,
+      partner_key: null,
+      photos: deepCopy(state.photos),
+      own_words: state.ownWords,
+      open_photos: deepCopy(state.openPhotos),
+      cover_photo: deepCopy(state.coverPhoto),
+      section_index: 0,
+      updated_at: now,
+    };
+
+    const row1 = Object.assign({}, base, {
+      respondent_key: k1,
+      first_name: state.first, last_name: state.last, dob: state.dob,
+      answers: buildSoloAnswers("p1"),
+    });
+    const row2 = Object.assign({}, base, {
+      respondent_key: k2,
+      first_name: state.first2, last_name: state.last2, dob: state.dob2,
+      answers: buildSoloAnswers("p2"),
+      photos: deepCopy(state.photos),
+      open_photos: deepCopy(state.openPhotos),
+      cover_photo: deepCopy(state.coverPhoto),
+    });
+
+    if (sb) {
+      // Make sure the latest couple edits are saved to the shared row first.
+      await remoteSave(false);
+      const { error } = await sb
+        .from("responses")
+        .upsert([row1, row2], { onConflict: "respondent_key" });
+      if (error) { console.error(error); toast("Couldn't split \u2014 try again", true); return; }
+    }
+
+    // Continue this session as whichever partner is currently signed in.
+    const signedInKey = normKey($("first").value.trim() || state.first,
+                                $("last").value.trim() || state.last,
+                                $("dob").value.trim() || state.dob);
+    const asP2 = signedInKey === normKey(state.first2, state.last2, state.dob2);
+
+    state.isCouple = false;
+    if (asP2) {
+      state.first = state.first2; state.last = state.last2; state.dob = state.dob2;
+      state.answers = row2.answers;
+      state.respondentKey = k2;
+    } else {
+      state.answers = row1.answers;
+      state.respondentKey = k1;
+    }
+    state.first2 = ""; state.last2 = ""; state.dob2 = "";
+    state.photos = deepCopy(base.photos);
+    state.openPhotos = deepCopy(base.open_photos);
+
+    toast("Split complete \u2014 you can each sign in on your own now");
+    renderSection();
+  }
+
+  function confirmSplitCouple() {
+    const ok = window.confirm(
+      "Switch to filling this out separately?\n\n" +
+      "This keeps your shared answers and gives each of you your own copy to " +
+      "edit from here on. Answers you wrote together are copied to both. " +
+      "After this, you'll each sign in with your own name and date of birth.\n\n" +
+      "Continue?");
+    if (ok) splitCouple();
   }
 
   // ── Build & trigger print ────────────────────────────
@@ -1199,9 +1534,32 @@
     return h;
   }
 
+  // Does an answer (string or {p1,p2}) have any content?
+  function answerHasContent(a) {
+    if (!a) return false;
+    if (typeof a === "object") return !!((a.p1 && a.p1.trim()) || (a.p2 && a.p2.trim()));
+    return !!String(a).trim();
+  }
+  // Render an answer to print HTML, labeling each partner when split.
+  function answerToHTML(a) {
+    if (a && typeof a === "object") {
+      let h = "";
+      if (a.p1 && a.p1.trim())
+        h += '<p class="ans-name">' + esc(state.first || "Partner 1") + '</p>' +
+             "<p>" + esc(a.p1).replace(/\n/g, "</p><p>") + "</p>";
+      if (a.p2 && a.p2.trim())
+        h += '<p class="ans-name">' + esc(state.first2 || "Partner 2") + '</p>' +
+             "<p>" + esc(a.p2).replace(/\n/g, "</p><p>") + "</p>";
+      return h;
+    }
+    return "<p>" + esc(a).replace(/\n/g, "</p><p>") + "</p>";
+  }
+
   function buildPrint() {
     const root = $("print-root");
-    const name = (state.first + " " + state.last).trim();
+    const name = state.isCouple
+      ? (state.first + " & " + state.first2 + " " + state.last).trim()
+      : (state.first + " " + state.last).trim();
     const cover = state.coverPhoto && state.coverPhoto.url
       ? '<img class="cover-img" src="' + esc(state.coverPhoto.url) + '" alt="">'
       : "";
@@ -1209,33 +1567,28 @@
       '<div class="print-cover">' +
       cover +
       "<h1>" + esc(name) + "</h1>" +
-      "<p>A Life in My Own Words</p>" +
+      "<p>" + (state.isCouple ? "A Life in Our Own Words" : "A Life in My Own Words") + "</p>" +
       (state.dob ? "<p>Born " + esc(state.dob) + "</p>" : "") +
       "</div>";
 
     SECTIONS.forEach((sec, si) => {
-      if (sec.custom) {
-        const entries = (state.customEntries || []).filter(
-          (e) => (e.q && e.q.trim()) || (e.a && e.a.trim()));
-        if (!entries.length) return;
+      if (sec.openField) {
+        const txt = (state.ownWords || "").trim();
+        const hasPhotos = state.openPhotos && state.openPhotos.length;
+        if (!txt && !hasPhotos) return;
         html += '<section class="print-chapter">';
         html += '<p class="cnum">Chapter ' + (si + 1) + "</p>";
         html += "<h2>" + esc(sec.title) + "</h2>";
         html += '<p class="csub">' + esc(sec.subtitle) + "</p>";
-        entries.forEach((e) => {
-          html += '<div class="print-entry">';
-          if (e.q && e.q.trim()) html += "<h3>" + esc(e.q) + "</h3>";
-          if (e.a && e.a.trim())
-            html += "<p>" + esc(e.a).replace(/\n/g, "</p><p>") + "</p>";
-          html += photoHTML(e.photos);
-          html += "</div>";
-        });
+        if (txt)
+          html += '<div class="print-entry"><p>' +
+            esc(txt).replace(/\n/g, "</p><p>") + "</p></div>";
+        html += photoHTML(state.openPhotos);
         html += "</section>";
         return;
       }
 
-      const answered = sec.questions.filter(
-        (q) => state.answers[q.id] && String(state.answers[q.id]).trim());
+      const answered = sec.questions.filter((q) => answerHasContent(state.answers[q.id]));
       const hasPhotos = sec.questions.some(
         (q) => state.photos[q.id] && state.photos[q.id].length);
       if (!answered.length && !hasPhotos) return;
@@ -1247,11 +1600,10 @@
       sec.questions.forEach((q) => {
         const a = state.answers[q.id];
         const photos = state.photos[q.id];
-        if ((!a || !String(a).trim()) && (!photos || !photos.length)) return;
+        if (!answerHasContent(a) && (!photos || !photos.length)) return;
         html += '<div class="print-entry">';
         html += "<h3>" + esc(q.text) + "</h3>";
-        if (a && String(a).trim())
-          html += "<p>" + esc(a).replace(/\n/g, "</p><p>") + "</p>";
+        if (answerHasContent(a)) html += answerToHTML(a);
         html += photoHTML(photos);
         html += "</div>";
       });
@@ -1274,6 +1626,7 @@
   $("btn-back").addEventListener("click", back);
   $("btn-save").addEventListener("click", () => remoteSave(true));
   $("btn-switch").addEventListener("click", switchUser);
+  $("btn-split-couple").addEventListener("click", confirmSplitCouple);
   $("btn-print-wizard").addEventListener("click", doPrint);
   $("btn-print-done").addEventListener("click", doPrint);
   $("btn-review").addEventListener("click", () => {
@@ -1288,6 +1641,26 @@
       if (e.key === "Enter") startOrResume();
     });
   });
+
+  // Solo / couple mode toggle
+  (function wireModeToggle() {
+    const toggle = $("mode-toggle");
+    const opts = toggle.children || [];
+    function setMode(mode) {
+      loginMode = mode;
+      for (let i = 0; i < toggle.children.length; i++) {
+        const b = toggle.children[i];
+        b.classList.toggle("current", b.dataset.mode === mode);
+      }
+      $("partner-fields").classList.toggle("hidden", mode !== "couple");
+      $("lbl-first").textContent = mode === "couple" ? "Your first name" : "First name";
+      $("lbl-dob").textContent = mode === "couple" ? "Your date of birth" : "Date of birth";
+    }
+    for (let i = 0; i < toggle.children.length; i++) {
+      const b = toggle.children[i];
+      b.addEventListener("click", () => setMode(b.dataset.mode));
+    }
+  })();
 
   renderTOC();
 })();

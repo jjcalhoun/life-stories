@@ -39,16 +39,23 @@ for storage. Total setup time is about 20 minutes, and it's all free.
 -- Table that holds one row per person
 create table if not exists responses (
   respondent_key text primary key,
+  partner_key    text,
   first_name     text,
   last_name      text,
   dob            text,
+  is_couple      boolean default false,
+  partner        jsonb,
   answers        jsonb default '{}'::jsonb,
   photos         jsonb default '{}'::jsonb,
-  custom_entries jsonb default '[]'::jsonb,
+  own_words      text,
+  open_photos    jsonb default '[]'::jsonb,
   cover_photo    jsonb,
   section_index  int  default 0,
   updated_at     timestamptz default now()
 );
+
+-- Lets either partner of a couple sign in by their own name + DOB
+create index if not exists responses_partner_key_idx on responses (partner_key);
 
 -- Turn on row-level security
 alter table responses enable row level security;
@@ -152,38 +159,58 @@ Either way: share the main link with your grandparents, and keep the
 Everything below is **optional** — the questionnaire works fully with no photos
 at all, and people can skip any of it.
 
-- **Add photos to any question.** Under each longer question (and each custom
-  entry) there's an "Add a photo" button. They can attach several, give each a
-  caption, and reorder them with the ← → arrows. Photos show up in their
-  printed book, your admin view, and the manuscript export.
+- **Fill out solo or as a couple.** On the first screen people choose "On my
+  own" or "As a couple." Couples enter both names and dates of birth, and either
+  partner can sign in later with their own details to reach the same shared
+  story. For each question a couple can answer **together** (one shared answer)
+  or **separately** (a labeled box for each of them) using a small toggle.
+- **Switch a couple to filling out separately.** While signed in as a couple
+  there's a "fill out separately" link. It keeps the shared story intact and
+  creates two independent solo stories — answers written together are copied
+  into both (each can then edit their own copy), and separate answers go to
+  their owner. After that, each partner signs in with just their own name and
+  date of birth and works independently.
+- **Add photos to any question.** Under each longer question there's an "Add a
+  photo" button. They can attach several, give each a caption, and reorder them
+  with the ← → arrows. Photos show up in their printed book, your admin view,
+  and the manuscript export.
 - **Choose a cover photo.** On the first page (*About You*) there's an optional
   cover-photo picker for the front of their book. It's clearly marked optional
   and can be removed or skipped.
+- **Jump between sections.** A row of section buttons sits under the progress
+  bar (shown at both the top and bottom of each page), so people can move
+  around freely instead of only going next/back.
 - **Print their own copy.** There's a "print my answers" link at the bottom of
   the questionnaire and a "Print or save my book" button on the final screen.
   It opens their browser's print dialog laid out as a clean little book, cover
   photo and captions included — choosing "Save as PDF" gives them a keepsake.
-- **Add their own questions at the end.** The final section, *In Your Own
-  Words*, invites them to add as many of their own question-and-answer entries
-  as they like, each with its own photos.
+- **Say anything at the end.** The final section, *In Your Own Words*, is a free
+  open space for any memory, story, or message, plus optional photos.
 
 ## Using the admin page
 
-- Visit `admin.html` and enter your passphrase.
+- Get there via the discreet "keeper's desk" link at the bottom of the
+  questionnaire, or go straight to `admin.html`, and enter your passphrase.
 - You'll see every person, their progress (e.g. `54/85 · 64%`), and when they
-  last saved. (Their custom entries aren't counted in the percentage, since
-  there's no fixed number of them.)
-- Click a row to read their full answers, including thumbnails of any photos
-  and all their custom entries.
-- **Export all (CSV)** opens in Excel/Sheets — one row per person, one column
-  per question, plus a final column gathering their custom entries.
+  last saved. Couples are shown with both names.
+- Click a row to read their full answers (couple answers are labeled by name),
+  with thumbnails of any photos.
+- **Add photos yourself.** On any answer in the detail view you can upload,
+  caption, reorder, and remove photos — handy if a relative shares pictures
+  separately. Changes save immediately.
+- **Delete a response.** At the bottom of each detail view is a delete button;
+  it asks you to type `DELETE` to confirm, since this permanently removes that
+  person's whole story and can't be undone.
+- **Export all (CSV)** opens in Excel/Sheets — one row per person, columns for
+  each question (couple answers labeled by name), plus couple info and their
+  free-text final section.
 - **Export all (JSON)** is the raw data backup (includes photo URLs).
-- **Download manuscript (.html)** is the special one: it turns a single
-  person's answers into a clean, 6×9 book-sized document. Each section becomes a
-  chapter, empty questions are skipped, **photos they uploaded are placed right
-  in the text**, their custom entries appear as their own chapter, and each
-  chapter still gets one dashed **[ PHOTO ]** box in case you want to add an
-  extra picture during layout.
+- **Download manuscript (.html)** turns a single person's (or couple's) answers
+  into a clean, 6×9 book-sized document. Each section becomes a chapter, empty
+  questions are skipped, **photos are placed right in the text**, couple answers
+  are labeled by name, the final free-text section becomes its own chapter, and
+  each chapter still gets one dashed **[ PHOTO ]** box for an extra layout
+  picture.
 
 ### Turning a manuscript into a printed book
 

@@ -202,6 +202,66 @@
 
   let rows = [];
 
+  // ── Photo upload + saving edits back to Supabase ─────
+  async function uploadPhoto(file, respondentKey) {
+    if (!sb) throw new Error("Supabase not configured");
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const safe = String(respondentKey).replace(/[^a-z0-9]+/g, "_");
+    const path = safe + "/admin_" + Date.now() + "_" +
+                 Math.random().toString(36).slice(2, 8) + "." + ext;
+    const { error } = await sb.storage.from("photos").upload(path, file, {
+      cacheControl: "3600", upsert: false,
+    });
+    if (error) throw error;
+    const { data } = sb.storage.from("photos").getPublicUrl(path);
+    return { url: data.publicUrl, path: path, caption: "" };
+  }
+
+  // Persist photo edits (and only those) for the current respondent.
+  async function savePhotos(row) {
+    if (!sb) return;
+    const { error } = await sb
+      .from("responses")
+      .update({ photos: row.photos, open_photos: row.open_photos })
+      .eq("respondent_key", row.respondent_key);
+    if (error) { console.error(error); toast("Couldn't save \u2014 try again", true); }
+    else { toast("Saved"); }
+  }
+
+  // Delete a respondent's entire row (and forget it locally).
+  async function deleteRow(row) {
+    if (!sb) { toast("Supabase not configured", true); return false; }
+    const { error } = await sb
+      .from("responses")
+      .delete()
+      .eq("respondent_key", row.respondent_key);
+    if (error) { console.error(error); toast("Delete failed \u2014 try again", true); return false; }
+    return true;
+  }
+
+  let toastTimer = null;
+  function toast(msg, isError) {
+    let t = $("admin-toast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "admin-toast";
+      t.style.cssText = "position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);" +
+        "background:#2b2420;color:#fdf6ea;font-size:0.9rem;padding:10px 18px;border-radius:4px;" +
+        "opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:50;" +
+        "box-shadow:0 10px 30px -10px rgba(0,0,0,0.4);";
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.background = isError ? "#531d2b" : "#2b2420";
+    t.style.opacity = "1";
+    t.style.transform = "translateX(-50%) translateY(0)";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      t.style.opacity = "0";
+      t.style.transform = "translateX(-50%) translateY(20px)";
+    }, 2000);
+  }
+
   function show(id) {
     ["admin-login", "admin-dash", "admin-detail"].forEach((s) =>
       $(s).classList.toggle("hidden", s !== id));
@@ -211,13 +271,19 @@
   const QMAP = {};
   SECTIONS.forEach((s) => s.questions.forEach((q) => { QMAP[q.id] = q.text; }));
 
+  function answerFilled(v) {
+    if (!v) return false;
+    if (typeof v === "object") return !!((v.p1 && v.p1.trim()) || (v.p2 && v.p2.trim()));
+    return !!String(v).trim();
+  }
+
   function completion(answers) {
     let total = 0, filled = 0;
     SECTIONS.forEach((s) => {
-      if (s.custom) return; // custom section has no fixed questions
+      if (s.openField) return; // open section has no fixed questions
       s.questions.forEach((q) => {
         total++;
-        if (answers && answers[q.id] && String(answers[q.id]).trim()) filled++;
+        if (answers && answerFilled(answers[q.id])) filled++;
       });
     });
     return { filled, total, pct: total ? Math.round((filled / total) * 100) : 0 };
@@ -299,67 +365,298 @@
 
   // ── Detail view ──────────────────────────────────────
   let currentRow = null;
-  function photoStrip(list) {
-    if (!list || !list.length) return "";
-    let h = "<div style='display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;'>";
-    list.forEach((p) => {
-      h += "<figure style='margin:0;'>" +
-        "<a href='" + esc(p.url) + "' target='_blank'>" +
-        "<img src='" + esc(p.url) + "' style='width:90px;height:90px;object-fit:cover;border:1px solid #ddd0bd;border-radius:3px;display:block;'></a>";
-      if (p.caption && p.caption.trim())
-        h += "<figcaption style='font-style:italic;color:#6f6258;font-size:0.78rem;max-width:90px;'>" +
-          esc(p.caption) + "</figcaption>";
-      h += "</figure>";
+
+  // Build an interactive photo strip with thumbnails, captions, reorder,
+  // remove, and an "Add photo" button. getList/setList read & write the
+  // photo array on the current row; onChange saves to Supabase.
+  function buildPhotoEditor(getList, setList) {
+    const wrap = document.createElement("div");
+    wrap.style.marginTop = "8px";
+
+    const strip = document.createElement("div");
+    strip.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;";
+    wrap.appendChild(strip);
+
+    function commit() { savePhotos(currentRow); }
+
+    function render() {
+      strip.innerHTML = "";
+      const list = getList() || [];
+      list.forEach((p, idx) => {
+        const fig = document.createElement("figure");
+        fig.style.cssText = "margin:0;width:96px;";
+
+        const imgWrap = document.createElement("div");
+        imgWrap.style.cssText = "position:relative;width:96px;height:96px;";
+        const img = document.createElement("img");
+        img.src = p.url;
+        img.style.cssText = "width:96px;height:96px;object-fit:cover;border:1px solid #ddd0bd;border-radius:3px;display:block;";
+        imgWrap.appendChild(img);
+
+        const rm = document.createElement("button");
+        rm.textContent = "\u00d7";
+        rm.title = "Remove photo";
+        rm.style.cssText = "position:absolute;top:2px;right:2px;width:20px;height:20px;line-height:18px;" +
+          "text-align:center;background:rgba(43,36,32,0.8);color:#fff;border:none;border-radius:50%;" +
+          "cursor:pointer;font-size:13px;padding:0;";
+        rm.addEventListener("click", () => {
+          const arr = (getList() || []).slice();
+          arr.splice(idx, 1);
+          setList(arr); render(); commit();
+        });
+        imgWrap.appendChild(rm);
+        fig.appendChild(imgWrap);
+
+        if (list.length > 1) {
+          const nav = document.createElement("div");
+          nav.style.cssText = "display:flex;justify-content:space-between;margin:3px 0;";
+          const mk = (txt, disabled, fn) => {
+            const b = document.createElement("button");
+            b.textContent = txt; b.disabled = disabled;
+            b.style.cssText = "width:44px;border:1px solid #ddd0bd;background:transparent;" +
+              "color:#6b2737;border-radius:3px;cursor:pointer;font-size:0.8rem;" +
+              (disabled ? "opacity:0.3;" : "");
+            b.addEventListener("click", fn);
+            return b;
+          };
+          nav.appendChild(mk("\u2190", idx === 0, () => {
+            const arr = (getList() || []).slice();
+            [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+            setList(arr); render(); commit();
+          }));
+          nav.appendChild(mk("\u2192", idx === list.length - 1, () => {
+            const arr = (getList() || []).slice();
+            [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]];
+            setList(arr); render(); commit();
+          }));
+          fig.appendChild(nav);
+        }
+
+        const cap = document.createElement("input");
+        cap.type = "text";
+        cap.placeholder = "Caption";
+        cap.value = p.caption || "";
+        cap.style.cssText = "width:96px;font-size:0.78rem;padding:4px 6px;margin-top:3px;" +
+          "border:1px solid #ddd0bd;border-radius:3px;font-family:inherit;";
+        let capTimer = null;
+        cap.addEventListener("input", (e) => {
+          const arr = (getList() || []).slice();
+          arr[idx] = Object.assign({}, arr[idx], { caption: e.target.value });
+          setList(arr);
+          clearTimeout(capTimer);
+          capTimer = setTimeout(commit, 800);
+        });
+        fig.appendChild(cap);
+
+        strip.appendChild(fig);
+      });
+    }
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "\uff0b Add photo";
+    btn.className = "btn btn-ghost btn-sm";
+    btn.style.marginTop = "8px";
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.multiple = true;
+    fileInput.style.display = "none";
+    btn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", async (e) => {
+      const files = Array.from(e.target.files || []);
+      btn.textContent = "Uploading\u2026"; btn.disabled = true;
+      for (const file of files) {
+        try {
+          const result = await uploadPhoto(file, currentRow.respondent_key);
+          const arr = (getList() || []).slice();
+          arr.push(result);
+          setList(arr);
+        } catch (err) { console.error(err); toast("Upload failed", true); }
+      }
+      btn.textContent = "\uff0b Add photo"; btn.disabled = false;
+      fileInput.value = "";
+      render();
+      commit();
     });
-    h += "</div>";
-    return h;
+
+    render();
+    wrap.appendChild(btn);
+    wrap.appendChild(fileInput);
+    return wrap;
   }
+
+  // Format an answer value (string or {p1,p2}) for display, with partner names.
+  function fmtAnswer(val, row) {
+    if (val && typeof val === "object") {
+      const p = row.partner || {};
+      const n1 = row.first_name || "Partner 1";
+      const n2 = (p.first || "Partner 2");
+      let parts = [];
+      if (val.p1 && val.p1.trim()) parts.push(n1 + ": " + val.p1);
+      if (val.p2 && val.p2.trim()) parts.push(n2 + ": " + val.p2);
+      return parts.join("\n\n");
+    }
+    return (val && String(val).trim()) ? String(val) : "";
+  }
+
   function openDetail(i) {
     currentRow = rows[i];
+    if (!currentRow.photos) currentRow.photos = {};
+    if (!currentRow.open_photos) currentRow.open_photos = [];
     const a = currentRow.answers || {};
-    const photos = currentRow.photos || {};
-    const customs = currentRow.custom_entries || [];
+    const photos = currentRow.photos;
     const mount = $("detail-mount");
-    const cover = currentRow.cover_photo && currentRow.cover_photo.url
-      ? "<img src='" + esc(currentRow.cover_photo.url) +
-        "' style='width:120px;height:150px;object-fit:cover;border:1px solid #ddd0bd;border-radius:4px;float:right;margin:0 0 12px 16px;'>"
-      : "";
-    let html = cover + "<h1 style='margin-bottom:2px;'>" +
-      esc(currentRow.first_name) + " " + esc(currentRow.last_name) + "</h1>" +
-      "<p class='eyebrow'>Born " + esc(currentRow.dob || "\u2014") +
-      " &middot; last saved " + fmtDate(currentRow.updated_at) + "</p>";
+    mount.innerHTML = "";
+
+    // Header with cover photo
+    const header = document.createElement("div");
+    if (currentRow.cover_photo && currentRow.cover_photo.url) {
+      const cimg = document.createElement("img");
+      cimg.src = currentRow.cover_photo.url;
+      cimg.style.cssText = "width:120px;height:150px;object-fit:cover;border:1px solid #ddd0bd;" +
+        "border-radius:4px;float:right;margin:0 0 12px 16px;";
+      header.appendChild(cimg);
+    }
+    const h1 = document.createElement("h1");
+    h1.style.marginBottom = "2px";
+    const partner = currentRow.partner || {};
+    h1.textContent = currentRow.is_couple
+      ? currentRow.first_name + " & " + (partner.first || "") + " " + currentRow.last_name
+      : currentRow.first_name + " " + currentRow.last_name;
+    header.appendChild(h1);
+    const meta = document.createElement("p");
+    meta.className = "eyebrow";
+    meta.textContent = (currentRow.is_couple ? "A couple's story \u00b7 " : "") +
+      "Born " + (currentRow.dob || "\u2014") +
+      " \u00b7 last saved " + fmtDate(currentRow.updated_at);
+    header.appendChild(meta);
+    mount.appendChild(header);
+
+    const note = document.createElement("p");
+    note.style.cssText = "font-size:0.88rem;color:#6f6258;font-style:italic;margin:0 0 20px;";
+    note.textContent = "You can add photos to any answer below. They\u2019re saved right away " +
+      "and will appear in this person\u2019s book and the manuscript export.";
+    mount.appendChild(note);
 
     SECTIONS.forEach((s) => {
-      if (s.custom) {
-        if (!customs.length) return;
-        html += "<div class='resp-section'><h3>" + esc(s.title) + "</h3>";
-        customs.forEach((e) => {
-          html += "<div class='qa'><div class='q'>" +
-            esc(e.q || "(untitled)") + "</div>";
-          html += "<div class='a'>" + (e.a ? esc(e.a) : "<span class='empty'>(no answer)</span>") + "</div>";
-          html += photoStrip(e.photos);
-          html += "</div>";
-        });
-        html += "</div>";
+      if (s.openField) {
+        const txt = currentRow.own_words || "";
+        if (!txt.trim() && !(currentRow.open_photos || []).length) return;
+        const sec = document.createElement("div");
+        sec.className = "resp-section";
+        const h3 = document.createElement("h3");
+        h3.textContent = s.title;
+        sec.appendChild(h3);
+        const qa = document.createElement("div");
+        qa.className = "qa";
+        const ans = document.createElement("div");
+        ans.className = "a" + (txt.trim() ? "" : " empty");
+        ans.textContent = txt.trim() ? txt : "(nothing written)";
+        qa.appendChild(ans);
+        qa.appendChild(buildPhotoEditor(
+          () => currentRow.open_photos,
+          (arr) => { currentRow.open_photos = arr; }
+        ));
+        sec.appendChild(qa);
+        mount.appendChild(sec);
         return;
       }
-      html += "<div class='resp-section'><h3>" + esc(s.title) + "</h3>";
+      const sec = document.createElement("div");
+      sec.className = "resp-section";
+      const h3 = document.createElement("h3");
+      h3.textContent = s.title;
+      sec.appendChild(h3);
       s.questions.forEach((q) => {
-        const val = a[q.id];
-        html += "<div class='qa'><div class='q'>" + esc(q.text) + "</div>";
-        if (val && String(val).trim()) {
-          html += "<div class='a'>" + esc(val) + "</div>";
-        } else {
-          html += "<div class='a empty'>(not yet answered)</div>";
-        }
-        html += photoStrip(photos[q.id]);
-        html += "</div>";
+        const disp = fmtAnswer(a[q.id], currentRow);
+        const qa = document.createElement("div");
+        qa.className = "qa";
+        const qd = document.createElement("div");
+        qd.className = "q";
+        qd.textContent = q.text;
+        qa.appendChild(qd);
+        const ad = document.createElement("div");
+        ad.className = "a" + (disp ? "" : " empty");
+        ad.textContent = disp || "(not yet answered)";
+        qa.appendChild(ad);
+        qa.appendChild(buildPhotoEditor(
+          () => photos[q.id],
+          (arr) => { photos[q.id] = arr; }
+        ));
+        sec.appendChild(qa);
       });
-      html += "</div>";
+      mount.appendChild(sec);
     });
-    mount.innerHTML = html;
+
+    // Danger zone — delete this response
+    const danger = document.createElement("div");
+    danger.style.cssText = "margin-top:36px;padding-top:20px;border-top:1px solid #e6c9c9;";
+    const dbtn = document.createElement("button");
+    dbtn.className = "btn btn-sm";
+    dbtn.textContent = "Delete this response\u2026";
+    dbtn.style.cssText = "background:transparent;color:#a23b3b;border:1px solid #d9a3a3;";
+    dbtn.addEventListener("click", () => confirmDelete(currentRow));
+    danger.appendChild(dbtn);
+    mount.appendChild(danger);
+
     show("admin-detail");
     window.scrollTo({ top: 0 });
+  }
+
+  // Delete confirmation: requires typing DELETE.
+  function confirmDelete(row) {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(43,36,32,0.5);" +
+      "display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;";
+    const box = document.createElement("div");
+    box.style.cssText = "background:#fffdf8;border:1px solid #ddd0bd;border-radius:6px;" +
+      "max-width:440px;padding:28px 30px;box-shadow:0 20px 50px -20px rgba(0,0,0,0.4);";
+    const name = (row.first_name || "") + " " + (row.last_name || "");
+    box.innerHTML =
+      "<h2 style='color:#a23b3b;margin:0 0 10px;font-family:\"Fraunces\",serif;'>Delete this response?</h2>" +
+      "<p style='margin:0 0 8px;'>This permanently deletes <strong>" + esc(name.trim()) +
+      "</strong>\u2019s entire story, including all answers and photos. This cannot be undone.</p>" +
+      "<p style='margin:0 0 6px;color:#6f6258;font-size:0.9rem;'>Type <strong>DELETE</strong> to confirm:</p>";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.style.cssText = "width:100%;padding:10px 12px;border:1px solid #ddd0bd;border-radius:3px;" +
+      "font-family:inherit;font-size:1rem;margin-bottom:16px;";
+    box.appendChild(input);
+    const row2 = document.createElement("div");
+    row2.style.cssText = "display:flex;gap:10px;justify-content:flex-end;";
+    const cancel = document.createElement("button");
+    cancel.className = "btn btn-ghost btn-sm";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", () => overlay.remove());
+    const confirm = document.createElement("button");
+    confirm.className = "btn btn-sm";
+    confirm.textContent = "Delete permanently";
+    confirm.style.cssText = "background:#a23b3b;color:#fff;";
+    confirm.disabled = true;
+    confirm.style.opacity = "0.5";
+    input.addEventListener("input", () => {
+      const ok = input.value.trim() === "DELETE";
+      confirm.disabled = !ok;
+      confirm.style.opacity = ok ? "1" : "0.5";
+      confirm.style.cursor = ok ? "pointer" : "not-allowed";
+    });
+    confirm.addEventListener("click", async () => {
+      if (input.value.trim() !== "DELETE") return;
+      confirm.textContent = "Deleting\u2026"; confirm.disabled = true;
+      const ok = await deleteRow(row);
+      overlay.remove();
+      if (ok) {
+        toast("Response deleted");
+        rows = rows.filter((r) => r.respondent_key !== row.respondent_key);
+        show("admin-dash");
+        renderTable();
+      }
+    });
+    row2.appendChild(cancel); row2.appendChild(confirm);
+    box.appendChild(row2);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    input.focus();
   }
 
   // ── Exports ──────────────────────────────────────────
@@ -379,28 +676,42 @@
     return s;
   }
 
+  // Flatten an answer (string or {p1,p2}) into one CSV cell.
+  function answerToCell(v, r) {
+    if (v && typeof v === "object") {
+      const p = r.partner || {};
+      const n1 = r.first_name || "Partner 1";
+      const n2 = p.first || "Partner 2";
+      let parts = [];
+      if (v.p1 && v.p1.trim()) parts.push(n1 + ": " + v.p1);
+      if (v.p2 && v.p2.trim()) parts.push(n2 + ": " + v.p2);
+      return parts.join("\n\n");
+    }
+    return v || "";
+  }
+
   function exportCSV() {
     // One row per respondent; one column per fixed question, plus identity
-    // columns and a final column holding any custom "in your own words" entries.
+    // columns and a final column holding the free-text "In Your Own Words".
     const qids = [];
     SECTIONS.forEach((s) => {
-      if (s.custom) return;
+      if (s.openField) return;
       s.questions.forEach((q) => qids.push(q.id));
     });
-    const header = ["First name", "Last name", "Date of birth", "Last saved"]
-      .concat(SECTIONS.filter((s) => !s.custom)
+    const header = ["First name", "Last name", "Date of birth", "Couple?", "Partner", "Last saved"]
+      .concat(SECTIONS.filter((s) => !s.openField)
         .flatMap((s) => s.questions.map((q) => s.title + " \u2014 " + q.text)))
-      .concat(["In Their Own Words (custom entries)"]);
+      .concat(["In Their Own Words"]);
     const lines = [header.map(csvCell).join(",")];
     rows.forEach((r) => {
       const a = r.answers || {};
-      const base = [r.first_name, r.last_name, r.dob, r.updated_at];
-      const ans = qids.map((id) => a[id] || "");
-      const customs = (r.custom_entries || [])
-        .filter((e) => (e.q && e.q.trim()) || (e.a && e.a.trim()))
-        .map((e) => (e.q || "(untitled)") + ": " + (e.a || ""))
-        .join("\n\n");
-      lines.push(base.concat(ans).concat([customs]).map(csvCell).join(","));
+      const p = r.partner || {};
+      const partnerName = r.is_couple
+        ? ((p.first || "") + " " + (p.last || "")).trim() + (p.dob ? " (" + p.dob + ")" : "")
+        : "";
+      const base = [r.first_name, r.last_name, r.dob, r.is_couple ? "yes" : "no", partnerName, r.updated_at];
+      const ans = qids.map((id) => answerToCell(a[id], r));
+      lines.push(base.concat(ans).concat([r.own_words || ""]).map(csvCell).join(","));
     });
     download("life-stories.csv", lines.join("\n"), "text/csv;charset=utf-8");
   }
@@ -426,9 +737,11 @@
     const r = currentRow;
     const a = r.answers || {};
     const photos = r.photos || {};
-    const customs = r.custom_entries || [];
+    const partner = r.partner || {};
     const cover = r.cover_photo || null;
-    const name = (r.first_name + " " + r.last_name).trim();
+    const name = r.is_couple
+      ? (r.first_name + " & " + (partner.first || "") + " " + r.last_name).trim()
+      : (r.first_name + " " + r.last_name).trim();
 
     function imgs(list) {
       let h = '<div class="photos">';
@@ -444,33 +757,46 @@
 
     function photoBlock(list, label) {
       if (list && list.length) return imgs(list);
-      // No photo supplied — leave a marked slot for the layout stage.
       return '<div class="photo-slot">[ PHOTO &mdash; ' + esc(label) +
              ': caption here ]</div>';
     }
 
+    function ansHasContent(v) {
+      if (!v) return false;
+      if (typeof v === "object") return !!((v.p1 && v.p1.trim()) || (v.p2 && v.p2.trim()));
+      return !!String(v).trim();
+    }
+    function ansHTML(v) {
+      if (v && typeof v === "object") {
+        let h = "";
+        if (v.p1 && v.p1.trim())
+          h += '<p class="ans-name">' + esc(r.first_name || "Partner 1") + '</p><p>' +
+               esc(v.p1).replace(/\n/g, '</p><p>') + '</p>';
+        if (v.p2 && v.p2.trim())
+          h += '<p class="ans-name">' + esc(partner.first || "Partner 2") + '</p><p>' +
+               esc(v.p2).replace(/\n/g, '</p><p>') + '</p>';
+        return h;
+      }
+      return '<p>' + esc(v).replace(/\n/g, '</p><p>') + '</p>';
+    }
+
     let body = "";
     SECTIONS.forEach((s, si) => {
-      if (s.custom) {
-        const entries = customs.filter((e) => (e.q && e.q.trim()) || (e.a && e.a.trim()));
-        if (!entries.length) return;
+      if (s.openField) {
+        const txt = (r.own_words || "").trim();
+        const op = r.open_photos || [];
+        if (!txt && !op.length) return;
         body += '<section class="chapter">';
         body += '<p class="chapter-num">Chapter ' + (si + 1) + '</p>';
         body += '<h2>' + esc(s.title) + '</h2>';
         body += '<p class="chapter-sub">' + esc(s.subtitle) + '</p>';
-        entries.forEach((e) => {
-          body += '<div class="entry">';
-          if (e.q && e.q.trim()) body += '<h3>' + esc(e.q) + '</h3>';
-          if (e.a && e.a.trim())
-            body += '<p>' + esc(e.a).replace(/\n/g, '</p><p>') + '</p>';
-          if (e.photos && e.photos.length) body += imgs(e.photos);
-          body += '</div>';
-        });
+        if (txt) body += '<div class="entry"><p>' + esc(txt).replace(/\n/g, '</p><p>') + '</p></div>';
+        if (op.length) body += imgs(op);
         body += '</section>';
         return;
       }
 
-      const answered = s.questions.filter((q) => a[q.id] && String(a[q.id]).trim());
+      const answered = s.questions.filter((q) => ansHasContent(a[q.id]));
       const anyPhotos = s.questions.some((q) => photos[q.id] && photos[q.id].length);
       if (!answered.length && !anyPhotos) return;
 
@@ -482,20 +808,19 @@
       s.questions.forEach((q) => {
         const val = a[q.id];
         const qphotos = photos[q.id];
-        if ((!val || !String(val).trim()) && (!qphotos || !qphotos.length)) return;
+        if (!ansHasContent(val) && (!qphotos || !qphotos.length)) return;
         body += '<div class="entry">';
         body += '<h3>' + esc(q.text) + '</h3>';
-        if (val && String(val).trim())
-          body += '<p>' + esc(val).replace(/\n/g, '</p><p>') + '</p>';
+        if (ansHasContent(val)) body += ansHTML(val);
         if (qphotos && qphotos.length) body += imgs(qphotos);
         body += '</div>';
       });
 
-      // One marked slot per chapter for an extra layout photo.
       body += photoBlock(null, s.title);
       body += '</section>';
     });
 
+    const subtitle = r.is_couple ? "A Life in Our Own Words" : "A Life in Their Own Words";
     const doc =
 '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(name) +
 ' \u2014 A Life Story</title>' +
@@ -513,6 +838,7 @@
 '.entry{margin:0 0 22px;}' +
 '.entry h3{font-family:"Fraunces",serif;font-weight:500;color:#6b2737;font-size:1.05rem;margin:0 0 4px;}' +
 '.entry p{margin:0 0 8px;text-align:justify;}' +
+'.entry .ans-name{font-family:"Fraunces",serif;font-weight:500;color:#6b2737;font-size:0.92rem;margin:6px 0 0;text-align:left;}' +
 '.photos{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0;}' +
 '.photos figure{margin:0;max-width:46%;}' +
 '.photos img{width:100%;border:1px solid #ddd0bd;border-radius:3px;display:block;}' +
@@ -524,7 +850,7 @@
 '<div class="title-page">' +
 (cover && cover.url ? '<img class="cover-img" src="' + esc(cover.url) + '" alt="">' : '') +
 '<h1>' + esc(name) + '</h1>' +
-'<p>A Life in His or Her Own Words</p>' +
+'<p>' + subtitle + '</p>' +
 '<p style="margin-top:8px;">Born ' + esc(r.dob || '') + '</p></div>' +
 body +
 '</body></html>';
