@@ -342,6 +342,71 @@
     border-top: 1px solid var(--rule-soft);
     margin: 22px 0 26px;
   }
+  .section-photos { margin: 0 0 4px; }
+  .section-photos-label {
+    font-family: "Fraunces", serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--burgundy);
+    margin: 0 0 8px;
+  }
+
+  .custom-q-wrap { margin: 4px 0 0; }
+  .custom-q-heading {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    color: var(--burgundy);
+    font-size: 1.15rem;
+    margin: 0 0 4px;
+  }
+  .custom-q-sub {
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin: 0 0 16px;
+  }
+  .custom-q-card {
+    border: 1px solid var(--rule-soft);
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin: 0 0 14px;
+    background: #fffefb;
+  }
+  .custom-q-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .custom-q-num {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    color: var(--gold);
+    font-size: 0.9rem;
+  }
+  .custom-q-remove {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-family: "Newsreader", serif;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .custom-q-remove:hover { color: var(--burgundy); }
+  .custom-q-question { margin-bottom: 10px; font-weight: 500; }
+  .custom-q-add {
+    font-family: "Fraunces", serif;
+    font-size: 0.95rem;
+    color: var(--burgundy);
+    background: transparent;
+    border: 1px dashed var(--rule);
+    border-radius: 4px;
+    padding: 11px 18px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .custom-q-add:hover { border-color: var(--gold); background: #faf4ea; }
 
   .q-text {
     font-family: "Fraunces", serif;
@@ -776,6 +841,8 @@
     first2: "", last2: "", dob2: "",
     answers: {},           // { questionId: string | {p1, p2} }
     photos: {},            // { questionId: [ {url, path, caption} ] }
+    sectionPhotos: {},     // { sectionId: [ {url, path, caption} ] } — top-of-section photos
+    customQuestions: {},   // { sectionId: [ {q, a, photos:[...]} ] } — per-user, never global
     ownWords: "",           // free-text final section
     openPhotos: [],         // photos for the final open section
     coverPhoto: null,       // { url, path } or null  (optional)
@@ -805,6 +872,8 @@
         isCouple: state.isCouple,
         first2: state.first2, last2: state.last2, dob2: state.dob2,
         answers: state.answers, photos: state.photos,
+        sectionPhotos: state.sectionPhotos,
+        customQuestions: state.customQuestions,
         ownWords: state.ownWords, openPhotos: state.openPhotos,
         coverPhoto: state.coverPhoto,
         sectionIndex: state.sectionIndex,
@@ -851,6 +920,8 @@
         : null,
       answers: state.answers,
       photos: state.photos,
+      section_photos: state.sectionPhotos,
+      custom_questions: state.customQuestions,
       own_words: state.ownWords,
       open_photos: state.openPhotos,
       cover_photo: state.coverPhoto,
@@ -877,6 +948,8 @@
       return {
         answers: data.answers || {},
         photos: data.photos || {},
+        sectionPhotos: data.section_photos || {},
+        customQuestions: data.custom_questions || {},
         ownWords: data.own_words || "",
         openPhotos: data.open_photos || [],
         coverPhoto: data.cover_photo || null,
@@ -889,7 +962,7 @@
       };
     }
 
-    const SEL = "answers, photos, own_words, open_photos, cover_photo, section_index, first_name, last_name, dob, is_couple, partner, respondent_key, partner_key";
+    const SEL = "answers, photos, section_photos, custom_questions, own_words, open_photos, cover_photo, section_index, first_name, last_name, dob, is_couple, partner, respondent_key, partner_key";
 
     // 1) A solo row (including one created by splitting a couple) takes
     //    precedence, so an independent login always lands on its own story.
@@ -1248,6 +1321,27 @@
     if (sec.openField) {
       renderOpenSection(mount);
     } else {
+      // Section-level photos (sections 2–12, i.e. not the first "About You"
+      // section). Sits right under the subheader, before the questions.
+      if (state.sectionIndex !== 0) {
+        const sps = document.createElement("div");
+        sps.className = "section-photos";
+        const lbl = document.createElement("p");
+        lbl.className = "section-photos-label";
+        lbl.textContent = "Photos for this section \u2014 optional";
+        sps.appendChild(lbl);
+        sps.appendChild(buildPhotoWidget(
+          () => state.sectionPhotos[sec.id],
+          (arr) => { state.sectionPhotos[sec.id] = arr; },
+          "Add any photos that belong to this chapter of your life"
+        ));
+        mount.appendChild(sps);
+
+        const hrp = document.createElement("hr");
+        hrp.className = "section-divider";
+        mount.appendChild(hrp);
+      }
+
       sec.questions.forEach((q) => {
         const block = document.createElement("div");
         block.className = "q-block";
@@ -1270,6 +1364,11 @@
 
         mount.appendChild(block);
       });
+
+      // Per-user custom questions at the bottom of sections 2–12.
+      if (state.sectionIndex !== 0) {
+        renderCustomQuestions(mount, sec.id);
+      }
 
       // The very first section also offers an optional cover photo.
       if (state.sectionIndex === 0) {
@@ -1328,6 +1427,96 @@
   }
 
   // ── Open "In Your Own Words" section ─────────────────
+  // ── Per-user custom questions for a section ──────────
+  // Stored under state.customQuestions[sectionId] as an array of
+  // { q, a, photos:[...] }. These live only in this person's row.
+  function renderCustomQuestions(mount, sectionId) {
+    if (!state.customQuestions[sectionId]) state.customQuestions[sectionId] = [];
+    const list = state.customQuestions[sectionId];
+
+    const wrap = document.createElement("div");
+    wrap.className = "custom-q-wrap";
+
+    const heading = document.createElement("p");
+    heading.className = "custom-q-heading";
+    heading.textContent = "Your own questions";
+    wrap.appendChild(heading);
+
+    const sub = document.createElement("p");
+    sub.className = "custom-q-sub";
+    sub.textContent = "Add any question of your own for this part of your life, " +
+      "and answer it however you like. These are just for you.";
+    wrap.appendChild(sub);
+
+    const entriesBox = document.createElement("div");
+    wrap.appendChild(entriesBox);
+
+    function draw() {
+      entriesBox.innerHTML = "";
+      list.forEach((entry, idx) => {
+        const card = document.createElement("div");
+        card.className = "custom-q-card";
+
+        const head = document.createElement("div");
+        head.className = "custom-q-card-head";
+        const num = document.createElement("span");
+        num.className = "custom-q-num";
+        num.textContent = "Your question " + (idx + 1);
+        head.appendChild(num);
+        const rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "custom-q-remove";
+        rm.textContent = "Remove";
+        rm.addEventListener("click", () => {
+          list.splice(idx, 1);
+          draw();
+          scheduleAutosave();
+        });
+        head.appendChild(rm);
+        card.appendChild(head);
+
+        const qIn = document.createElement("input");
+        qIn.type = "text";
+        qIn.className = "custom-q-question";
+        qIn.placeholder = "Type your question\u2026";
+        qIn.value = entry.q || "";
+        qIn.addEventListener("input", (e) => { entry.q = e.target.value; scheduleAutosave(); });
+        card.appendChild(qIn);
+
+        const aIn = document.createElement("textarea");
+        aIn.value = entry.a || "";
+        aIn.placeholder = "Your answer\u2026";
+        aIn.addEventListener("input", (e) => { entry.a = e.target.value; scheduleAutosave(); });
+        card.appendChild(aIn);
+
+        card.appendChild(buildPhotoWidget(
+          () => entry.photos,
+          (arr) => { entry.photos = arr; },
+          "Optional \u2014 add a picture for this question if you like"
+        ));
+
+        entriesBox.appendChild(card);
+      });
+    }
+    draw();
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "custom-q-add";
+    addBtn.textContent = "\uff0b Add your own question";
+    addBtn.addEventListener("click", () => {
+      list.push({ q: "", a: "", photos: [] });
+      draw();
+      scheduleAutosave();
+    });
+    wrap.appendChild(addBtn);
+
+    const hr = document.createElement("hr");
+    hr.className = "section-divider";
+    mount.appendChild(hr);
+    mount.appendChild(wrap);
+  }
+
   function renderOpenSection(mount) {
     const ta = document.createElement("textarea");
     ta.value = state.ownWords || "";
@@ -1397,6 +1586,8 @@
     if (existing && existing.answers) {
       state.answers = existing.answers || {};
       state.photos = existing.photos || {};
+      state.sectionPhotos = existing.sectionPhotos || {};
+      state.customQuestions = existing.customQuestions || {};
       state.ownWords = existing.ownWords || "";
       state.openPhotos = existing.openPhotos || [];
       state.coverPhoto = existing.coverPhoto || null;
@@ -1418,6 +1609,8 @@
     } else {
       state.answers = {};
       state.photos = {};
+      state.sectionPhotos = {};
+      state.customQuestions = {};
       state.ownWords = "";
       state.openPhotos = [];
       state.coverPhoto = null;
@@ -1455,6 +1648,8 @@
     remoteSave(false);
     state.answers = {};
     state.photos = {};
+    state.sectionPhotos = {};
+    state.customQuestions = {};
     state.ownWords = "";
     state.openPhotos = [];
     state.coverPhoto = null;
@@ -1645,12 +1840,16 @@
       const answered = sec.questions.filter((q) => answerHasContent(state.answers[q.id]));
       const hasPhotos = sec.questions.some(
         (q) => state.photos[q.id] && state.photos[q.id].length);
-      if (!answered.length && !hasPhotos) return;
+      const secPhotos = state.sectionPhotos[sec.id] || [];
+      const customs = (state.customQuestions[sec.id] || []).filter(
+        (e) => (e.q && e.q.trim()) || (e.a && e.a.trim()) || (e.photos && e.photos.length));
+      if (!answered.length && !hasPhotos && !secPhotos.length && !customs.length) return;
 
       html += '<section class="print-chapter">';
       html += '<p class="cnum">Chapter ' + (si + 1) + "</p>";
       html += "<h2>" + esc(sec.title) + "</h2>";
       html += '<p class="csub">' + esc(sec.subtitle) + "</p>";
+      if (secPhotos.length) html += photoHTML(secPhotos);
       sec.questions.forEach((q) => {
         const a = state.answers[q.id];
         const photos = state.photos[q.id];
@@ -1659,6 +1858,13 @@
         html += "<h3>" + esc(q.text) + "</h3>";
         if (answerHasContent(a)) html += answerToHTML(a);
         html += photoHTML(photos);
+        html += "</div>";
+      });
+      customs.forEach((e) => {
+        html += '<div class="print-entry">';
+        if (e.q && e.q.trim()) html += "<h3>" + esc(e.q) + "</h3>";
+        if (e.a && e.a.trim()) html += "<p>" + esc(e.a).replace(/\n/g, "</p><p>") + "</p>";
+        html += photoHTML(e.photos);
         html += "</div>";
       });
       html += "</section>";

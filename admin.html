@@ -226,7 +226,7 @@
     if (!sb) return;
     const { error } = await sb
       .from("responses")
-      .update({ photos: row.photos, open_photos: row.open_photos })
+      .update({ photos: row.photos, open_photos: row.open_photos, section_photos: row.section_photos, custom_questions: row.custom_questions })
       .eq("respondent_key", row.respondent_key);
     if (error) { console.error(error); toast("Couldn't save \u2014 try again", true); }
     else { toast("Saved"); }
@@ -580,8 +580,12 @@
     currentRow = rows[i];
     if (!currentRow.photos) currentRow.photos = {};
     if (!currentRow.open_photos) currentRow.open_photos = [];
+    if (!currentRow.section_photos) currentRow.section_photos = {};
+    if (!currentRow.custom_questions) currentRow.custom_questions = {};
     const a = currentRow.answers || {};
     const photos = currentRow.photos;
+    const sectionPhotos = currentRow.section_photos;
+    const customQuestions = currentRow.custom_questions;
     const mount = $("detail-mount");
     mount.innerHTML = "";
 
@@ -643,6 +647,17 @@
       const h3 = document.createElement("h3");
       h3.textContent = s.title;
       sec.appendChild(h3);
+      // Section-level photos (sections 2–12)
+      if (s.id !== "about") {
+        const spLabel = document.createElement("div");
+        spLabel.style.cssText = "font-size:0.82rem;color:#6f6258;font-style:italic;margin:2px 0 0;";
+        spLabel.textContent = "Photos for this section";
+        sec.appendChild(spLabel);
+        sec.appendChild(buildPhotoEditor(
+          () => sectionPhotos[s.id],
+          (arr) => { sectionPhotos[s.id] = arr; }
+        ));
+      }
       s.questions.forEach((q) => {
         const disp = fmtAnswer(a[q.id], currentRow);
         const qa = document.createElement("div");
@@ -661,6 +676,28 @@
         ));
         sec.appendChild(qa);
       });
+
+      // Per-user custom questions for this section
+      const cqs = customQuestions[s.id] || [];
+      cqs.forEach((entry, ci) => {
+        const qa = document.createElement("div");
+        qa.className = "qa";
+        const qd = document.createElement("div");
+        qd.className = "q";
+        qd.innerHTML = "<span style='font-style:italic;color:#b08433;'>Their own question:</span> " +
+          esc(entry.q || "(untitled)");
+        qa.appendChild(qd);
+        const ad = document.createElement("div");
+        ad.className = "a" + (entry.a && entry.a.trim() ? "" : " empty");
+        ad.textContent = (entry.a && entry.a.trim()) ? entry.a : "(no answer)";
+        qa.appendChild(ad);
+        qa.appendChild(buildPhotoEditor(
+          () => customQuestions[s.id][ci].photos,
+          (arr) => { customQuestions[s.id][ci].photos = arr; }
+        ));
+        sec.appendChild(qa);
+      });
+
       mount.appendChild(sec);
     });
 
@@ -806,7 +843,7 @@
     const header = ["First name", "Last name", "Date of birth", "Couple?", "Partner", "Last saved"]
       .concat(SECTIONS.filter((s) => !s.openField)
         .flatMap((s) => s.questions.map((q) => s.title + " \u2014 " + q.text)))
-      .concat(["In Their Own Words"]);
+      .concat(["In Their Own Words", "Their Own Questions"]);
     const lines = [header.map(csvCell).join(",")];
     rows.forEach((r) => {
       const a = r.answers || {};
@@ -816,7 +853,16 @@
         : "";
       const base = [r.first_name, r.last_name, r.dob, r.is_couple ? "yes" : "no", partnerName, r.updated_at];
       const ans = qids.map((id) => answerToCell(a[id], r));
-      lines.push(base.concat(ans).concat([r.own_words || ""]).map(csvCell).join(","));
+      // Gather all custom questions across sections into one cell.
+      const cqMap = r.custom_questions || {};
+      let cqParts = [];
+      SECTIONS.forEach((s) => {
+        (cqMap[s.id] || []).forEach((e) => {
+          if ((e.q && e.q.trim()) || (e.a && e.a.trim()))
+            cqParts.push("[" + s.title + "] " + (e.q || "(untitled)") + ": " + (e.a || ""));
+        });
+      });
+      lines.push(base.concat(ans).concat([r.own_words || "", cqParts.join("\n\n")]).map(csvCell).join(","));
     });
     download("life-stories.csv", lines.join("\n"), "text/csv;charset=utf-8");
   }
@@ -903,12 +949,16 @@
 
       const answered = s.questions.filter((q) => ansHasContent(a[q.id]));
       const anyPhotos = s.questions.some((q) => photos[q.id] && photos[q.id].length);
-      if (!answered.length && !anyPhotos) return;
+      const secPhotos = (r.section_photos || {})[s.id] || [];
+      const customs = ((r.custom_questions || {})[s.id] || []).filter(
+        (e) => (e.q && e.q.trim()) || (e.a && e.a.trim()) || (e.photos && e.photos.length));
+      if (!answered.length && !anyPhotos && !secPhotos.length && !customs.length) return;
 
       body += '<section class="chapter">';
       body += '<p class="chapter-num">Chapter ' + (si + 1) + '</p>';
       body += '<h2>' + esc(s.title) + '</h2>';
       body += '<p class="chapter-sub">' + esc(s.subtitle) + '</p>';
+      if (secPhotos.length) body += imgs(secPhotos);
 
       s.questions.forEach((q) => {
         const val = a[q.id];
@@ -918,6 +968,14 @@
         body += '<h3>' + esc(q.text) + '</h3>';
         if (ansHasContent(val)) body += ansHTML(val);
         if (qphotos && qphotos.length) body += imgs(qphotos);
+        body += '</div>';
+      });
+
+      customs.forEach((e) => {
+        body += '<div class="entry">';
+        if (e.q && e.q.trim()) body += '<h3>' + esc(e.q) + '</h3>';
+        if (e.a && e.a.trim()) body += '<p>' + esc(e.a).replace(/\n/g, '</p><p>') + '</p>';
+        if (e.photos && e.photos.length) body += imgs(e.photos);
         body += '</div>';
       });
 
