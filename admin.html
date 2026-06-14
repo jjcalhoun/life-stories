@@ -145,8 +145,9 @@
     <p class="eyebrow">Every story collected so far.</p>
 
     <div class="note">
-      Tip: Use <strong>Manuscript</strong> to download a book-ready document for one person —
-      it lays out their answers as flowing chapters with clearly marked spots to drop in photos.
+      Tip: Use <strong>Life story book</strong> to download a book-ready document for one
+      person &mdash; as a ready-to-print PDF or an editable .html file. It lays out their
+      answers as flowing chapters with photos placed in, and marked spots for any extras.
     </div>
 
     <div class="card">
@@ -167,7 +168,8 @@
     <div class="toolbar">
       <button class="btn btn-ghost btn-sm" id="btn-back-list">&larr; All responses</button>
       <span class="spacer"></span>
-      <button class="btn btn-ghost btn-sm" id="btn-manuscript">Download manuscript (.html)</button>
+      <button class="btn btn-ghost btn-sm" id="btn-book-pdf">Life story book (PDF)</button>
+      <button class="btn btn-ghost btn-sm" id="btn-book-html">Life story book (.html)</button>
       <button class="btn btn-ghost btn-sm" id="btn-detail-json">Download (JSON)</button>
     </div>
     <div class="card" id="detail-mount"></div>
@@ -616,7 +618,7 @@
     const note = document.createElement("p");
     note.style.cssText = "font-size:0.88rem;color:#6f6258;font-style:italic;margin:0 0 20px;";
     note.textContent = "You can add photos to any answer below. They\u2019re saved right away " +
-      "and will appear in this person\u2019s book and the manuscript export.";
+      "and will appear in this person\u2019s book and the life story book export.";
     mount.appendChild(note);
 
     SECTIONS.forEach((s) => {
@@ -879,12 +881,14 @@
       JSON.stringify(currentRow, null, 2), "application/json;charset=utf-8");
   }
 
-  // ── Book-ready manuscript (one person) ───────────────
+  // ── Life story book (one person) ─────────────────────
   // Produces a clean, print-friendly HTML document with each section as a
   // chapter, the questions as gentle subheadings, and a clearly marked
   // [ PHOTO ] block after each chapter for the layout stage.
-  function exportManuscript() {
-    if (!currentRow) return;
+  // Returns the full HTML document string (used for both the .html download
+  // and the print-to-PDF option).
+  function buildBookDoc() {
+    if (!currentRow) return null;
     const r = currentRow;
     const a = r.answers || {};
     const photos = r.photos || {};
@@ -1059,9 +1063,36 @@
 body +
 '</body></html>';
 
-    download(
-      (r.last_name || "story") + "-" + (r.first_name || "") + "-manuscript.html",
-      doc, "text/html;charset=utf-8");
+    const filename = (r.last_name || "story") + "-" + (r.first_name || "") + "-life-story-book.html";
+    return { doc: doc, filename: filename };
+  }
+
+  // Download the life story book as an .html file.
+  function exportBookHTML() {
+    const built = buildBookDoc();
+    if (!built) return;
+    download(built.filename, built.doc, "text/html;charset=utf-8");
+  }
+
+  // Open the life story book in a new window and trigger the print dialog,
+  // where the person can choose "Save as PDF". Reuses the 6×9 print layout.
+  function exportBookPDF() {
+    const built = buildBookDoc();
+    if (!built) return;
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast("Please allow pop-ups to save as PDF", true);
+      return;
+    }
+    w.document.open();
+    w.document.write(built.doc);
+    w.document.close();
+    // Give the new window a moment to load fonts and images before printing.
+    const go = () => {
+      try { w.focus(); w.print(); } catch (e) { /* user can print manually */ }
+    };
+    if (w.document.readyState === "complete") setTimeout(go, 900);
+    else w.onload = () => setTimeout(go, 900);
   }
 
   // ── Wire up ──────────────────────────────────────────
@@ -1073,7 +1104,8 @@ body +
   $("btn-export-json").addEventListener("click", exportJSON);
   $("btn-back-list").addEventListener("click", () => { show("admin-dash"); });
   $("btn-detail-json").addEventListener("click", exportDetailJSON);
-  $("btn-manuscript").addEventListener("click", exportManuscript);
+  $("btn-book-pdf").addEventListener("click", exportBookPDF);
+  $("btn-book-html").addEventListener("click", exportBookHTML);
 
   // Stay logged in for the session
   if (sessionStorage.getItem("ls-admin") === "1") {

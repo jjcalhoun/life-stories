@@ -8,12 +8,12 @@
 //  the actions you permit through Row Level Security (set up in the guide).
 // ─────────────────────────────────────────────────────────────────────────
 
-const SUPABASE_URL = "https://dpaqtbyckuqwoczccwhz.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_r7WGyawAJPZb_dU-kqeuQA_grUJV7BP";
+const SUPABASE_URL = "https://YOUR-PROJECT-ref.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
 
 // A private word only you know. Anyone visiting admin.html must type this
 // to view responses. Change it to something only you would guess.
-const ADMIN_PASSPHRASE = "D5a1t2a3!";
+const ADMIN_PASSPHRASE = "change-this-to-something-secret";
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { SUPABASE_URL, SUPABASE_ANON_KEY, ADMIN_PASSPHRASE };

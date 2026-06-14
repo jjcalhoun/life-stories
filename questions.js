@@ -136,15 +136,17 @@ const SECTIONS = [
   },
   {
     id: "grandchildren",
-    title: "Grandchildren",
+    title: "Grandchildren & Great-Grandchildren",
     subtitle: "A whole new chapter of love.",
     questions: [
       { id: "grandkids_arrived", text: "When did grandchildren come into your life, and how did it feel?" },
       { id: "grandkids_names", text: "What are each of your grandchildren's names and what makes each one special?" },
-      { id: "grandkids_remember", text: "What do you hope your grandchildren remember about you?" },
+      { id: "greatgrandkids_arrived", text: "Have great-grandchildren come along? When did they arrive, and how did it feel to meet them?" },
+      { id: "greatgrandkids_names", text: "What are your great-grandchildren's names, and what do you love about each of them?" },
+      { id: "grandkids_remember", text: "What do you hope your grandchildren and great-grandchildren remember about you?" },
       { id: "grandkids_advice", text: "What advice do you most want to pass on to them?" },
-      { id: "grandkid_memory", text: "What is a favorite memory with a grandchild?" },
-      { id: "grandparent_different", text: "How is being a grandparent different from being a parent?" },
+      { id: "grandkid_memory", text: "What is a favorite memory with a grandchild or great-grandchild?" },
+      { id: "grandparent_different", text: "How is being a grandparent (or great-grandparent) different from being a parent?" },
     ],
   },
   {

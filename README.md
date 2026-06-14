@@ -4,7 +4,7 @@ This is a small website where a person signs in with their **first name, last
 name, and date of birth**, answers a life-story questionnaire one section at a
 time, and can leave and return later to pick up where they left off. You get a
 private **admin page** to read every response, export everything, and download a
-**book-ready manuscript** for any one person with their photos laid in place.
+**book-ready life story book** for any one person with their photos laid in place.
 
 There's no server to run. It's plain HTML/JS files plus a free Supabase database
 for storage. Total setup time is about 20 minutes, and it's all free.
@@ -193,7 +193,7 @@ at all, and people can skip any of it.
 - **Add photos to any question.** Under each longer question there's an "Add a
   photo" button. They can attach several, give each a caption, and reorder them
   with the ← → arrows. Photos show up in their printed book, your admin view,
-  and the manuscript export.
+  and the life story book export.
 - **Add photos to a whole section.** At the top of each section (except *About
   You*) there's a spot to add photos that belong to that chapter of life as a
   whole, rather than to one question. In the printed book these become an
@@ -245,20 +245,24 @@ at all, and people can skip any of it.
   free-text final section, and a column gathering any custom questions they
   added.
 - **Export all (JSON)** is the raw data backup (includes photo URLs).
-- **Download manuscript (.html)** turns a single person's (or couple's) answers
-  into a clean, 6×9 book-sized document. Each section becomes a chapter, empty
-  questions are skipped, section photos open the chapter as a collage, **photos
-  are placed right in the text**, couple answers are labeled by name, their own
-  custom questions appear alongside the standard ones, the final free-text
-  section becomes its own chapter, and each chapter still gets one dashed
-  **[ PHOTO ]** box for an extra layout picture.
+- **Life story book (PDF)** opens the book in a new tab and brings up the print
+  dialog, where you choose "Save as PDF" — already sized for a 6×9 book. This is
+  the easiest way to get a finished, ready-to-print file.
+- **Life story book (.html)** downloads the same book as an editable HTML file,
+  in case you want to tweak it before printing. Either way: each section becomes
+  a chapter, empty questions are skipped, section photos open the chapter as a
+  collage, **photos are placed right in the text**, couple answers are labeled by
+  name, their own custom questions appear alongside the standard ones, the final
+  free-text section becomes its own chapter, and each chapter still gets one
+  dashed **[ PHOTO ]** box for an extra layout picture.
 
-### Turning a manuscript into a printed book
+### Turning a life story book into a printed keepsake
 
-1. From a person's detail page, click **Download manuscript (.html)**.
-2. Open that file in your browser. To get a PDF: **File → Print → Save as PDF**
-   (it's already sized for a 6×9 book with proper margins and page breaks).
-3. For real photos, open the `.html` in any editor and replace each
+1. From a person's detail page, click **Life story book (PDF)** and choose
+   "Save as PDF" in the print dialog (it's already sized for a 6×9 book with
+   proper margins and page breaks). Or use **Life story book (.html)** if you'd
+   like to edit it first.
+2. For extra photos, open the `.html` in any editor and replace each
    `[ PHOTO — … ]` box with an `<img>` — or just hand the PDF and your photos to
    a service like **Blurb**, **Lulu**, or a local print shop and tell them where
    each photo goes. The captions in the boxes tell you which chapter each belongs

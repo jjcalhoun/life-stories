@@ -305,6 +305,42 @@
   }
   .returning-note strong { color: var(--burgundy); }
 
+  /* ── Sample book callout (login only) ───────────────── */
+  .sample-callout {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin: 22px 0 6px;
+    padding: 18px 20px;
+    background: linear-gradient(135deg, #fbf5ea, #f3e7d0);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    flex-wrap: wrap;
+  }
+  .sample-text { flex: 1; min-width: 200px; }
+  .sample-title {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    color: var(--burgundy);
+    font-size: 1.15rem;
+    margin: 0 0 3px;
+  }
+  .sample-sub {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin: 0;
+    line-height: 1.45;
+  }
+  .btn-sample {
+    background: var(--gold);
+    color: #fff;
+    border: 1px solid var(--gold);
+    white-space: nowrap;
+    font-family: "Fraunces", serif;
+    font-weight: 500;
+  }
+  .btn-sample:hover { background: #9a7128; border-color: #9a7128; }
+
   /* ── Couple split answer fields ─────────────────────── */
   .split-field { margin-bottom: 10px; }
   .split-name {
@@ -714,6 +750,16 @@
       <p>Welcome. This is a place to set down your life story — at your own pace, in your own words.</p>
       <p class="muted">To begin, or to pick up where you left off, tell us who you are. Your name and date of birth are how we&rsquo;ll find your saved answers when you return.</p>
     </div>
+
+    <div class="sample-callout">
+      <div class="sample-text">
+        <p class="sample-title">New here? See what you&rsquo;ll create.</p>
+        <p class="sample-sub">Take a peek at an example life story book to see how your
+        words and photos come together.</p>
+      </div>
+      <button class="btn btn-sample" id="btn-sample">Preview a sample book</button>
+    </div>
+
     <hr class="section-divider" />
 
     <div class="field">
@@ -806,6 +852,8 @@
       Saving as <strong id="who"></strong> &middot;
       <button id="btn-switch">not you?</button>
       &middot;
+      <button id="btn-preview-book">preview my book</button>
+      &middot;
       <button id="btn-print-wizard">print my answers</button>
       <span id="split-couple-wrap" class="hidden">
         &middot;
@@ -823,6 +871,7 @@
     </div>
     <div class="mt-m">
       <button class="btn btn-ghost" id="btn-review">Review my answers</button>
+      <button class="btn btn-ghost" id="btn-preview-done">Preview my book</button>
       <button class="btn btn-primary" id="btn-print-done">Print or save my book</button>
     </div>
   </section>
@@ -1878,40 +1927,43 @@
     return !!String(a).trim();
   }
   // Render an answer to print HTML, labeling each partner when split.
-  function answerToHTML(a) {
+  function answerToHTML(a, src) {
+    src = src || state;
     if (a && typeof a === "object") {
       let h = "";
       if (a.p1 && a.p1.trim())
-        h += '<p class="ans-name">' + esc(state.first || "Partner 1") + '</p>' +
+        h += '<p class="ans-name">' + esc(src.first || "Partner 1") + '</p>' +
              "<p>" + esc(a.p1).replace(/\n/g, "</p><p>") + "</p>";
       if (a.p2 && a.p2.trim())
-        h += '<p class="ans-name">' + esc(state.first2 || "Partner 2") + '</p>' +
+        h += '<p class="ans-name">' + esc(src.first2 || "Partner 2") + '</p>' +
              "<p>" + esc(a.p2).replace(/\n/g, "</p><p>") + "</p>";
       return h;
     }
     return "<p>" + esc(a).replace(/\n/g, "</p><p>") + "</p>";
   }
 
-  function buildPrint() {
-    const root = $("print-root");
-    const name = state.isCouple
-      ? (state.first + " & " + state.first2 + " " + state.last).trim()
-      : (state.first + " " + state.last).trim();
-    const cover = state.coverPhoto && state.coverPhoto.url
-      ? '<img class="cover-img" src="' + esc(state.coverPhoto.url) + '" alt="">'
+  // Builds the full book HTML (cover + chapters) from a source object
+  // (defaults to the live `state`, but the sample book passes its own).
+  function buildBookBody(src) {
+    src = src || state;
+    const name = src.isCouple
+      ? (src.first + " & " + src.first2 + " " + src.last).trim()
+      : (src.first + " " + src.last).trim();
+    const cover = src.coverPhoto && src.coverPhoto.url
+      ? '<img class="cover-img" src="' + esc(src.coverPhoto.url) + '" alt="">'
       : "";
     let html =
       '<div class="print-cover">' +
       cover +
       "<h1>" + esc(name) + "</h1>" +
-      "<p>" + (state.isCouple ? "A Life in Our Own Words" : "A Life in My Own Words") + "</p>" +
-      (state.dob ? "<p>Born " + esc(state.dob) + "</p>" : "") +
+      "<p>" + (src.isCouple ? "A Life in Our Own Words" : "A Life in My Own Words") + "</p>" +
+      (src.dob ? "<p>Born " + esc(src.dob) + "</p>" : "") +
       "</div>";
 
     SECTIONS.forEach((sec, si) => {
       if (sec.openField) {
-        const txt = (state.ownWords || "").trim();
-        const hasPhotos = state.openPhotos && state.openPhotos.length;
+        const txt = (src.ownWords || "").trim();
+        const hasPhotos = src.openPhotos && src.openPhotos.length;
         if (!txt && !hasPhotos) return;
         html += '<section class="print-chapter">';
         html += '<p class="cnum">Chapter ' + (si + 1) + "</p>";
@@ -1920,16 +1972,16 @@
         if (txt)
           html += '<div class="print-entry"><p>' +
             esc(txt).replace(/\n/g, "</p><p>") + "</p></div>";
-        html += photoHTML(state.openPhotos);
+        html += photoHTML(src.openPhotos);
         html += "</section>";
         return;
       }
 
-      const answered = sec.questions.filter((q) => answerHasContent(state.answers[q.id]));
+      const answered = sec.questions.filter((q) => answerHasContent(src.answers[q.id]));
       const hasPhotos = sec.questions.some(
-        (q) => state.photos[q.id] && state.photos[q.id].length);
-      const secPhotos = state.sectionPhotos[sec.id] || [];
-      const customs = (state.customQuestions[sec.id] || []).filter(
+        (q) => src.photos[q.id] && src.photos[q.id].length);
+      const secPhotos = (src.sectionPhotos || {})[sec.id] || [];
+      const customs = ((src.customQuestions || {})[sec.id] || []).filter(
         (e) => (e.q && e.q.trim()) || (e.a && e.a.trim()) || (e.photos && e.photos.length));
       if (!answered.length && !hasPhotos && !secPhotos.length && !customs.length) return;
 
@@ -1939,12 +1991,12 @@
       html += '<p class="csub">' + esc(sec.subtitle) + "</p>";
       if (secPhotos.length) html += collageHTML(secPhotos);
       sec.questions.forEach((q) => {
-        const a = state.answers[q.id];
-        const photos = state.photos[q.id];
+        const a = src.answers[q.id];
+        const photos = src.photos[q.id];
         if (!answerHasContent(a) && (!photos || !photos.length)) return;
         html += '<div class="print-entry">';
         html += "<h3>" + esc(q.text) + "</h3>";
-        if (answerHasContent(a)) html += answerToHTML(a);
+        if (answerHasContent(a)) html += answerToHTML(a, src);
         html += photoHTML(photos);
         html += "</div>";
       });
@@ -1958,7 +2010,11 @@
       html += "</section>";
     });
 
-    root.innerHTML = html;
+    return { html: html, hasContent: html.indexOf("print-chapter") >= 0 };
+  }
+
+  function buildPrint() {
+    $("print-root").innerHTML = buildBookBody().html;
   }
 
   function doPrint() {
@@ -1966,6 +2022,178 @@
     buildPrint();
     // Give the browser a tick to lay out images before printing.
     setTimeout(() => window.print(), 300);
+  }
+
+  // ── Sample book (fictional, shown from the login page) ──
+  // A made-up solo life story used only for the "Preview a sample book"
+  // button, so newcomers can see every feature before they begin. Photos use
+  // free stock URLs; if any fail to load, the preview swaps in a soft
+  // placeholder, so it always looks complete.
+  function sp(url, caption) { return { url: url, caption: caption || "" }; }
+  var SAMPLE_BOOK = {
+    isCouple: false,
+    first: "Eleanor", last: "Hayes", dob: "April 1944, Savannah, Georgia",
+    coverPhoto: sp("https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600"),
+    answers: {
+      full_name: "Eleanor Margaret Hayes (Whitfield, before I married).",
+      birth: "I was born in the spring of 1944, in a little house on the edge of Savannah, while the magnolias were in bloom.",
+      live_now: "These days I live in a cozy bungalow in Asheville, with a porch that catches the morning light.",
+      ancestry: "My people were farmers and seamstresses from the Carolinas, with a great-grandmother who came over from County Cork with nothing but a trunk and a stubborn streak.",
+      describe_parents: "My father was quiet and steady, a railroad man who whistled hymns. My mother could make a feast out of almost nothing and laughter out of any room.",
+      earliest_memory: "Sitting on the kitchen floor while my mother rolled out biscuit dough, handing me the scraps to shape into little misshapen stars.",
+      grew_up: "On Anderson Street, in a house with a screen door that never quite latched and a pecan tree we were forever climbing.",
+      work_history: "I taught third grade for thirty-two years. A few thousand children passed through my classroom, and I remember far more of them than you'd think.",
+      proudest_accomplishment: "A boy named Marcus who could barely read in September stood up and read aloud to the whole class by May. I cried in the supply closet afterward.",
+      the_one: "Walter asked me to dance at a church social, stepped squarely on my foot, apologized for a full minute, and I knew. Anyone that sorry about a small thing would be kind about the big ones.",
+      wedding_day: "We married in June of 1967 under my mother's pecan tree. It rained just long enough to be lucky, then cleared for the whole evening.",
+      marriage_secret: "Say the kind thing out loud. Do not save it for later. Later is not promised.",
+      grandkids_arrived: "Our first grandchild arrived in 1995, and I understood at once why my own grandmother's eyes used to shine the way they did.",
+      grandkids_names: "There's Lily, who is all questions; Sam, who is all motion; and quiet little June, who notices everything and says little.",
+      greatgrandkids_arrived: "The first great-grandbaby came in 2021. Holding four generations in one photograph is a feeling I cannot quite put into words.",
+      lessons: "Be slower to speak and quicker to forgive. Almost everything looks smaller in the morning.",
+      remembered_for: "As someone who made people feel they had a place to sit and were welcome to stay a while.",
+    },
+    photos: {
+      wedding_day: [
+        sp("https://images.unsplash.com/photo-1519741497674-611481863552?w=600", "Walter and me under the pecan tree, June 1967"),
+      ],
+      grandkids_names: [
+        sp("https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?w=600", "Lily, Sam, and June at the lake"),
+      ],
+    },
+    sectionPhotos: {
+      childhood: [
+        sp("https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=600", "The house on Anderson Street"),
+        sp("https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=600", "My mother in her garden"),
+        sp("https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=600"),
+        sp("https://images.unsplash.com/photo-1471107340929-a87cd0f5b5f3?w=600", "Summers were endless then"),
+      ],
+      career: [
+        sp("https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=600", "My classroom, 1981"),
+        sp("https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600"),
+      ],
+    },
+    customQuestions: {
+      roots: [
+        {
+          q: "What did Sunday dinners sound like in your house?",
+          a: "Forks on good china, my father's low laugh, the radio playing softly, and someone always reaching across someone else for the rolls.",
+          photos: [sp("https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600", "The table, set for Sunday")],
+        },
+      ],
+      career: [
+        {
+          q: "Is there a student you still wonder about?",
+          a: "Marcus, of course. I hope the world was as kind to him as that one good morning promised it might be.",
+          photos: [],
+        },
+      ],
+    },
+    ownWords: "If you take nothing else from these pages, take this: you were loved, " +
+      "thoroughly and without condition, by a woman who counted every one of you among " +
+      "her great fortunes. I have had a good long life. I would not trade a single " +
+      "ordinary Tuesday of it.\n\nSit on the porch now and then. Call your sister. " +
+      "Save the good dishes for no reason at all.",
+    openPhotos: [
+      sp("https://images.unsplash.com/photo-1488161628813-04466f872be2?w=600", "On the porch, the summer I turned seventy-five"),
+    ],
+  };
+
+  // Open a read-only preview of the life story book in a pop-up window.
+  // Reuses the same book layout as printing, but shown comfortably on screen
+  // (no download, no print) so people can see how their book is coming along.
+  function previewBook() {
+    remoteSave(false);
+    openBookWindow(state, false);
+  }
+
+  // Open the fictional sample book so new visitors can see what they'll create.
+  function previewSampleBook() {
+    openBookWindow(SAMPLE_BOOK, true);
+  }
+
+  function openBookWindow(src, isSample) {
+    const built = buildBookBody(src);
+    const w = window.open("", "_blank", "width=820,height=900,scrollbars=yes,resizable=yes");
+    if (!w) {
+      toast(isSample
+        ? "Please allow pop-ups to see the sample book"
+        : "Please allow pop-ups to preview your book", true);
+      return;
+    }
+    const name = src.isCouple
+      ? (src.first + " & " + src.first2 + " " + src.last).trim()
+      : (src.first + " " + src.last).trim();
+
+    const inner = built.hasContent
+      ? built.html
+      : '<div style="text-align:center;padding:24vh 20px;color:#6f6258;font-style:italic;">' +
+        'Your book will appear here as you answer questions. ' +
+        'Come back to preview it any time.</div>';
+
+    const barText = isSample
+      ? 'An example life story book &nbsp;&middot;&nbsp; ' +
+        '<span>this is a sample to show what\u2019s possible \u2014 close this window when you\u2019re done</span>'
+      : 'Preview of your life story book &nbsp;&middot;&nbsp; ' +
+        '<span>this is just a preview \u2014 close this window when you\u2019re done</span>';
+
+    const doc =
+'<!DOCTYPE html><html><head><meta charset="utf-8"><title>' +
+(isSample ? 'Sample life story book' : 'Preview \u2014 ' + esc(name)) + '</title>' +
+'<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">' +
+'<style>' +
+'body{margin:0;background:#efe7d8;font-family:"Newsreader",Georgia,serif;color:#2b2420;}' +
+'.preview-bar{position:sticky;top:0;z-index:5;background:#6b2737;color:#fff7ee;text-align:center;' +
+'padding:10px 16px;font-family:"Fraunces",serif;font-size:0.95rem;letter-spacing:0.01em;' +
+'box-shadow:0 2px 10px -4px rgba(0,0,0,0.4);}' +
+'.preview-bar span{font-style:italic;opacity:0.85;font-family:"Newsreader",serif;font-size:0.85rem;}' +
+'.book{max-width:6in;margin:28px auto;background:#fffdf8;padding:0.85in 0.75in;' +
+'box-shadow:0 12px 40px -16px rgba(74,55,40,0.4);border-radius:2px;line-height:1.6;font-size:12pt;}' +
+'.print-cover{text-align:center;padding:6vh 0 8vh;border-bottom:1px solid #ebe2d4;margin-bottom:8px;}' +
+'.print-cover h1{font-family:"Fraunces",serif;font-weight:600;color:#6b2737;font-size:2.4rem;margin:0 0 10px;}' +
+'.print-cover p{font-style:italic;color:#6f6258;font-size:1.1rem;margin:4px 0;}' +
+'.print-chapter{margin:0 0 30px;padding-top:18px;}' +
+'.print-chapter .cnum{font-family:"Fraunces",serif;font-style:italic;color:#b08433;font-size:0.9rem;margin:0 0 2px;}' +
+'.print-chapter h2{font-family:"Fraunces",serif;font-weight:600;color:#6b2737;font-size:1.7rem;margin:0 0 6px;}' +
+'.print-chapter .csub{font-style:italic;color:#6f6258;margin:0 0 18px;border-bottom:1px solid #ddd0bd;padding-bottom:12px;}' +
+'.print-entry{margin:0 0 20px;}' +
+'.print-entry h3{font-family:"Fraunces",serif;font-weight:500;color:#6b2737;font-size:1.05rem;margin:0 0 4px;}' +
+'.print-entry p{margin:0 0 8px;text-align:justify;}' +
+'.print-entry .ans-name{font-family:"Fraunces",serif;font-weight:500;color:#6b2737;font-size:0.9rem;margin:6px 0 0;text-align:left;}' +
+'.print-photos{display:flex;flex-wrap:wrap;gap:14px;margin:8px 0 4px;}' +
+'.print-fig{margin:0;max-width:46%;}' +
+'.print-fig img{width:100%;border:1px solid #ddd0bd;border-radius:3px;display:block;}' +
+'.print-fig figcaption{font-style:italic;color:#6f6258;font-size:0.82rem;text-align:center;margin-top:4px;}' +
+'.print-cover .cover-img{display:block;margin:0 auto 22px;max-width:62%;max-height:40vh;border:1px solid #ddd0bd;border-radius:4px;object-fit:cover;}' +
+'.collage{display:grid;gap:10px;margin:6px 0 14px;}' +
+'.collage.c1{grid-template-columns:1fr;max-width:78%;margin-left:auto;margin-right:auto;}' +
+'.collage.c2{grid-template-columns:1fr 1fr;}' +
+'.collage.c3{grid-template-columns:1fr 1fr 1fr;}' +
+'.collage.c4{grid-template-columns:1fr 1fr;}' +
+'.collage.mosaic{grid-template-columns:1fr 1fr 1fr;gap:8px;}' +
+'.collage-cell{position:relative;}' +
+'.collage-cell img{width:100%;height:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid #ddd0bd;border-radius:3px;display:block;}' +
+'.collage.c1 .collage-cell img,.collage.c2 .collage-cell img{aspect-ratio:4/3;}' +
+'.collage-badge{position:absolute;top:6px;left:6px;width:20px;height:20px;line-height:20px;text-align:center;background:rgba(43,36,32,0.78);color:#fdf6ea;border-radius:50%;font-size:0.72rem;}' +
+'.collage-captions{margin:0 0 18px;padding:10px 14px;background:#f5efe2;border-radius:4px;font-size:0.85rem;line-height:1.5;color:#6f6258;}' +
+'.collage-captions .cap-item{display:block;}' +
+'.collage-captions .cap-num{color:#6b2737;font-weight:500;margin-right:5px;}' +
+'</style></head><body>' +
+'<div class="preview-bar">' + barText + '</div>' +
+'<div class="book">' + inner + '</div>' +
+'<script>(function(){' +
+'function ph(){var s=\'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">\'+' +
+'\'<rect width="400" height="400" fill="%23e8dcc5"/>\'+' +
+'\'<text x="200" y="208" font-family="Georgia,serif" font-size="20" fill="%23b08433" text-anchor="middle">a photo</text></svg>\';' +
+'return "data:image/svg+xml;charset=utf-8,"+s;}' +
+'var imgs=document.images;for(var i=0;i<imgs.length;i++){(function(im){' +
+'im.onerror=function(){this.onerror=null;this.src=ph();};})(imgs[i]);}' +
+'})();<\/script>' +
+'</body></html>';
+
+    w.document.open();
+    w.document.write(doc);
+    w.document.close();
   }
 
   // ── Wire up ──────────────────────────────────────────
@@ -1979,6 +2207,9 @@
   $("btn-split-couple").addEventListener("click", confirmSplitCouple);
   $("btn-print-wizard").addEventListener("click", doPrint);
   $("btn-print-done").addEventListener("click", doPrint);
+  $("btn-preview-book").addEventListener("click", previewBook);
+  $("btn-preview-done").addEventListener("click", previewBook);
+  $("btn-sample").addEventListener("click", previewSampleBook);
   $("btn-review").addEventListener("click", () => {
     state.sectionIndex = 0;
     show("screen-wizard");
