@@ -616,6 +616,56 @@
     border: 1px solid var(--rule); border-radius: 4px; object-fit: cover;
   }
 
+  /* ── Section photo collage (chapter opening) ────────── */
+  .collage {
+    display: grid;
+    gap: 10px;
+    margin: 6px 0 14px;
+  }
+  .collage.c1 { grid-template-columns: 1fr; max-width: 78%; margin-left: auto; margin-right: auto; }
+  .collage.c2 { grid-template-columns: 1fr 1fr; }
+  .collage.c3 { grid-template-columns: 1fr 1fr 1fr; }
+  .collage.c4 { grid-template-columns: 1fr 1fr; }
+  .collage.mosaic { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .collage-cell {
+    position: relative;
+    break-inside: avoid;
+  }
+  .collage.c1 .collage-cell img { aspect-ratio: 4 / 3; }
+  .collage-cell img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    display: block;
+  }
+  .collage.c1 .collage-cell img, .collage.c2 .collage-cell img { aspect-ratio: 4 / 3; }
+  .collage-badge {
+    position: absolute;
+    top: 6px; left: 6px;
+    width: 20px; height: 20px;
+    line-height: 20px;
+    text-align: center;
+    background: rgba(43, 36, 32, 0.78);
+    color: #fdf6ea;
+    border-radius: 50%;
+    font-family: "Newsreader", serif;
+    font-size: 0.72rem;
+  }
+  .collage-captions {
+    margin: 0 0 18px;
+    padding: 10px 14px;
+    background: #f5efe2;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .collage-captions .cap-item { display: block; }
+  .collage-captions .cap-num { color: var(--burgundy); font-weight: 500; margin-right: 5px; }
+
   /* ── Photo cells (thumb + caption + reorder) ────────── */
   .photo-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .photo-cell { width: 96px; }
@@ -1783,6 +1833,44 @@
     return h;
   }
 
+  // Section photos render as an adaptive collage at the chapter opening.
+  // Captions (where present) are numbered and listed together below the grid.
+  // 1 photo -> single; 2-4 -> grid; 5-9 -> mosaic; 10+ -> mosaic that simply
+  // flows onto the next page (CSS keeps tiles from breaking awkwardly).
+  function collageHTML(list) {
+    if (!list || !list.length) return "";
+    const n = list.length;
+    let cls = "mosaic";
+    if (n === 1) cls = "c1";
+    else if (n === 2) cls = "c2";
+    else if (n === 3) cls = "c3";
+    else if (n === 4) cls = "c4";
+    else if (n <= 9) cls = "mosaic";
+    else cls = "mosaic";
+
+    let h = '<div class="collage ' + cls + '">';
+    const caps = [];
+    list.forEach((p) => {
+      h += '<div class="collage-cell">';
+      h += '<img src="' + esc(p.url) + '" alt="">';
+      if (p.caption && p.caption.trim()) {
+        caps.push(esc(p.caption));
+        h += '<span class="collage-badge">' + caps.length + '</span>';
+      }
+      h += '</div>';
+    });
+    h += '</div>';
+
+    if (caps.length) {
+      h += '<div class="collage-captions">';
+      caps.forEach((c, i) => {
+        h += '<span class="cap-item"><span class="cap-num">' + (i + 1) + '.</span>' + c + '</span>';
+      });
+      h += '</div>';
+    }
+    return h;
+  }
+
   // Does an answer (string or {p1,p2}) have any content?
   function answerHasContent(a) {
     if (!a) return false;
@@ -1849,7 +1937,7 @@
       html += '<p class="cnum">Chapter ' + (si + 1) + "</p>";
       html += "<h2>" + esc(sec.title) + "</h2>";
       html += '<p class="csub">' + esc(sec.subtitle) + "</p>";
-      if (secPhotos.length) html += photoHTML(secPhotos);
+      if (secPhotos.length) html += collageHTML(secPhotos);
       sec.questions.forEach((q) => {
         const a = state.answers[q.id];
         const photos = state.photos[q.id];
