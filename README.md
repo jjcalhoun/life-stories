@@ -4,7 +4,7 @@ This is a small website where a person signs in with their **first name, last
 name, and date of birth**, answers a life-story questionnaire one section at a
 time, and can leave and return later to pick up where they left off. You get a
 private **admin page** to read every response, export everything, and download a
-**book-ready manuscript** for any one person with photo slots marked for layout.
+**book-ready manuscript** for any one person with their photos laid in place.
 
 There's no server to run. It's plain HTML/JS files plus a free Supabase database
 for storage. Total setup time is about 20 minutes, and it's all free.
@@ -19,6 +19,7 @@ for storage. Total setup time is about 20 minutes, and it's all free.
 | `admin.html` | Your private page to read & export responses |
 | `questions.js` | All the questions (edit here to change wording) |
 | `config.js` | **You paste your Supabase keys + admin passphrase here** |
+| `user-guide.pdf` | A friendly guide for the people filling it out (linked from the site) |
 | `README.md` | This guide |
 
 ---
@@ -47,6 +48,8 @@ create table if not exists responses (
   partner        jsonb,
   answers        jsonb default '{}'::jsonb,
   photos         jsonb default '{}'::jsonb,
+  section_photos   jsonb default '{}'::jsonb,
+  custom_questions jsonb default '{}'::jsonb,
   own_words      text,
   open_photos    jsonb default '[]'::jsonb,
   cover_photo    jsonb,
@@ -69,10 +72,27 @@ create policy "anyone can upsert their story"
   with check (true);
 ```
 
+> **Already have a table from an earlier version?** Don't recreate it — just run
+> this once to add the newer columns. It's safe with live data and won't touch
+> existing answers:
+>
+> ```sql
+> alter table responses add column if not exists partner_key      text;
+> alter table responses add column if not exists is_couple        boolean default false;
+> alter table responses add column if not exists partner          jsonb;
+> alter table responses add column if not exists own_words        text;
+> alter table responses add column if not exists open_photos      jsonb default '[]'::jsonb;
+> alter table responses add column if not exists cover_photo      jsonb;
+> alter table responses add column if not exists section_photos   jsonb default '{}'::jsonb;
+> alter table responses add column if not exists custom_questions jsonb default '{}'::jsonb;
+> create index if not exists responses_partner_key_idx on responses (partner_key);
+> ```
+
 ## Step 2b — Create the photo storage bucket
 
-People can attach photos to any question and to their own custom entries.
-Those images live in Supabase Storage.
+People can attach photos to any question, to the top of each section, to their
+own custom questions, and to the final open section. Those images live in
+Supabase Storage.
 
 1. In the left sidebar open **Storage**, then **New bucket**.
 2. Name it exactly **`photos`** and turn **Public bucket ON** (so the pictures
@@ -174,9 +194,22 @@ at all, and people can skip any of it.
   photo" button. They can attach several, give each a caption, and reorder them
   with the ← → arrows. Photos show up in their printed book, your admin view,
   and the manuscript export.
+- **Add photos to a whole section.** At the top of each section (except *About
+  You*) there's a spot to add photos that belong to that chapter of life as a
+  whole, rather than to one question. In the printed book these become an
+  adaptive collage at the start of the chapter — a single large image for one
+  photo, a tidy grid for a few, a mosaic for many — with any captions listed
+  together beneath, numbered to match.
+- **Add their own questions.** At the bottom of each section (except *About You*
+  and the final one) people can add their own question-and-answer pairs, each
+  with optional photos. These are private to that person — they never appear for
+  anyone else — and flow into their book and your exports alongside the standard
+  questions.
 - **Choose a cover photo.** On the first page (*About You*) there's an optional
   cover-photo picker for the front of their book. It's clearly marked optional
   and can be removed or skipped.
+- **A friendly guide.** A "How to use this" link at the top of every page opens
+  `user-guide.pdf`, a gentle walkthrough written for the people filling it out.
 - **Jump between sections.** A row of section buttons sits under the progress
   bar (shown at both the top and bottom of each page), so people can move
   around freely instead of only going next/back. Back and Next buttons appear
@@ -195,10 +228,11 @@ at all, and people can skip any of it.
 - You'll see every person, their progress (e.g. `54/85 · 64%`), and when they
   last saved. Couples are shown with both names.
 - Click a row to read their full answers (couple answers are labeled by name),
-  with thumbnails of any photos.
-- **Add photos yourself.** On any answer in the detail view you can upload,
-  caption, reorder, and remove photos — handy if a relative shares pictures
-  separately. Changes save immediately.
+  including any section photos, their own custom questions, and thumbnails of
+  any photos.
+- **Add photos yourself.** On any answer — and on each section's photo area —
+  you can upload, caption, reorder, and remove photos in the detail view, handy
+  if a relative shares pictures separately. Changes save immediately.
 - **Delete a response.** At the bottom of each detail view is a delete button;
   it asks you to type `DELETE` to confirm, since this permanently removes that
   person's whole story and can't be undone.
@@ -207,15 +241,17 @@ at all, and people can skip any of it.
   button appears in the toolbar — it asks you to type `DELETE` before removing
   them all.
 - **Export all (CSV)** opens in Excel/Sheets — one row per person, columns for
-  each question (couple answers labeled by name), plus couple info and their
-  free-text final section.
+  each question (couple answers labeled by name), plus couple info, their
+  free-text final section, and a column gathering any custom questions they
+  added.
 - **Export all (JSON)** is the raw data backup (includes photo URLs).
 - **Download manuscript (.html)** turns a single person's (or couple's) answers
   into a clean, 6×9 book-sized document. Each section becomes a chapter, empty
-  questions are skipped, **photos are placed right in the text**, couple answers
-  are labeled by name, the final free-text section becomes its own chapter, and
-  each chapter still gets one dashed **[ PHOTO ]** box for an extra layout
-  picture.
+  questions are skipped, section photos open the chapter as a collage, **photos
+  are placed right in the text**, couple answers are labeled by name, their own
+  custom questions appear alongside the standard ones, the final free-text
+  section becomes its own chapter, and each chapter still gets one dashed
+  **[ PHOTO ]** box for an extra layout picture.
 
 ### Turning a manuscript into a printed book
 
