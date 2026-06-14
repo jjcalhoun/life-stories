@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 const SUPABASE_URL = "https://YOUR-PROJECT-ref.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_r7WGyawAJPZb_dU-kqeuQA_grUJV7BP";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwYXF0Ynlja3Vxd29jemNjd2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTkwODAsImV4cCI6MjA5NjYzNTA4MH0.88JlnWHfnYAgZfYJWFTs0Wl729hC1_4zA9OBMOvBBec";
 
 // A private word only you know. Anyone visiting admin.html must type this
 // to view responses. Change it to something only you would guess.
